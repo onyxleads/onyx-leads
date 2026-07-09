@@ -25,14 +25,12 @@ const supabase = SUPABASE_URL && SUPABASE_ANON
 
 /* ─── קבועים ──────────────────────────────────────────────────────────────── */
 const PHASES = [
-  { id:"new_leads",  label:"לידים חדשים",                color:"#16a3a3", dim:"#0a4444" },
-  { id:"pre",        label:"צריך להתקשר",                color:"#7c6fcd", dim:"#3b3470" },
-  { id:"ready",      label:"לאחר שיחה",                  color:"#e8a838", dim:"#5c420e" },
-  { id:"submitted",  label:"פולואו אפ",                  color:"#2d88d4", dim:"#0f3a5e" },
-  { id:"approved",   label:"מעוניינים - התחילו התאמה",   color:"#3dba7e", dim:"#0e4430" },
-  { id:"securities", label:"חתמו מול מתווך",             color:"#d4704a", dim:"#5a2510" },
-  { id:"done",       label:"לא מעוניינים",               color:"#6abf6a", dim:"#1a4a1a" },
-  { id:"archive",    label:"לקוחות בארכיון",             color:"#9b59b6", dim:"#4a1a6a" },
+  { id:"incoming",               label:"ליד נכנס",                  color:"#16a3a3", dim:"#0a4444" },
+  { id:"after_call",             label:"לידים לאחר שיחה",           color:"#7c6fcd", dim:"#3b3470" },
+  { id:"followup_interested",    label:"פולואו אפ - מעוניינים",     color:"#3dba7e", dim:"#0e4430" },
+  { id:"followup_not_interested",label:"פולואו אפ - לא מעוניינים",  color:"#e8a838", dim:"#5c420e" },
+  { id:"do_not_call",            label:"לא להתקשר יותר",            color:"#d43a3a", dim:"#5a1010" },
+  { id:"closed_client",          label:"ליד סגר - לקוח",            color:"#4f46e5", dim:"#241f70" },
 ];
 const PHASE_MAP = Object.fromEntries(PHASES.map(p => [p.id, p]));
 
@@ -130,7 +128,7 @@ const sanitizeClientPayload = (data) => {
 
 const mkClient = (overrides = {}) => ({
   id:           mkId(),
-  phase:        "pre",
+  phase:        "incoming",
   sort_order:   null,
   name:         "",
   first_name:   "",
@@ -5858,7 +5856,7 @@ function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onRe
      כל ליד מקבל:
        • advisor_email — אותה לוגיקה בדיוק כמו addClient (sales=עצמו תמיד; admin=הבורר/עצמו).
          זה קריטי ל-RLS: בלי advisor_email נכון, Supabase דוחה את ה-insert.
-       • phase = "new_leads" — תמיד נכנס לעמודת "לידים חדשים".
+       • phase = "incoming" — תמיד נכנס לעמודת "ליד נכנס".
        • phone → ממופה למערך phones [{number, ownerName}] לפי מבנה הנתונים הקיים.
      מחזיר את מספר הלידים שיובאו בהצלחה (לטוסט). זורק שגיאה אם ה-insert נכשל. */
   const handleImportLeads = useCallback(async (leads) => {
@@ -5878,7 +5876,7 @@ function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onRe
       const client = mkClient({
         ...rest,                       // כל שדות הנכס הממופים: city/street/number/neighborhood/type/condition/size/rooms/floor/balcony/mamad/parking/elevator/price/market_since/published_on/ad_link/seller_notes/lead_source
         name: ld.name || "",
-        phase: "new_leads",            // תמיד עמודת "לידים חדשים"
+        phase: "incoming",              // תמיד עמודת "ליד נכנס"
         advisor_email: assignedAdvisor, // הטבעת RLS — קריטי
         // טלפון בודד מהקובץ → מבנה phones הקיים
         phones: (phone || "").trim()
@@ -6090,7 +6088,7 @@ function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onRe
   const duplicateClient = useCallback(async (src) => {
     if (!src) return;
     const dup = mkClient({
-      phase:     "pre",
+      phase:     "incoming",
       name:      src.name || "",
       case_type: "לקוח משוכפל, הזן פירטי התיק",
       // פרטי קשר וזיהוי בלבד
@@ -6166,10 +6164,10 @@ function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onRe
     // סינון חכם: לקוחות בשלב ארכיון (is_archive===true) מוחרגים מהמדדים הפעילים.
     const active = advisorScoped.filter(c => !archivePhaseIds.has(c.phase));
     return [
-      { label:"סה״כ לקוחות",   val: active.length },
-      { label:"ממתינים להגשה", val: active.filter(c=>["pre","ready"].includes(c.phase)).length },
-      { label:"בתהליך",        val: active.filter(c=>["submitted","approved","securities"].includes(c.phase)).length },
-      { label:"לא מעוניינים", val: active.filter(c=>c.phase==="done").length },
+      { label:"סה״כ לידים",              val: active.length },
+      { label:"פולואו אפ - מעוניינים",    val: active.filter(c=>c.phase==="followup_interested").length },
+      { label:"נסגרו כלקוח",              val: active.filter(c=>c.phase==="closed_client").length },
+      { label:"לא מעוניינים / לא להתקשר", val: active.filter(c=>["followup_not_interested","do_not_call"].includes(c.phase)).length },
     ];
   }, [advisorScoped, archivePhaseIds]);
 
@@ -6248,8 +6246,8 @@ function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onRe
           {/* לוגו */}
           <div style={{ display:"flex", alignItems:"center", flexShrink:0 }}>
             <div style={{ lineHeight:1.2 }}>
-              <div style={{ fontWeight:900, fontSize:16, color:T.textPrimary, letterSpacing:-.3 }}>WISELI</div>
-              <div style={{ fontSize:9, color:T.textSecondary, fontWeight:600 }}>לבחור חכם</div>
+              <div style={{ fontWeight:900, fontSize:16, color:T.textPrimary, letterSpacing:-.3 }}>ONYX LEADS</div>
+              <div style={{ fontSize:9, color:T.textSecondary, fontWeight:600 }}>ניהול לידים</div>
             </div>
           </div>
 
