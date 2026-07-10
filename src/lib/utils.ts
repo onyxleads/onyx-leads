@@ -64,11 +64,11 @@ export const mkId = () =>
    שנכתבים ישירות, כדי לכסות גם פעולות inline (שינוי שלב, גרירה, עדכון מהיר).
    ──────────────────────────────────────────────────────────────────────── */
 export const TIMESTAMP_DATE_FIELDS = [
-  "whatsapp_initial_sent_at", "property_on_market_since",
+  "whatsapp_initial_sent_at",
   "collateral_approval_date", "collateral_appraisal_date", "fee_paid_date",
   "created_at", "updated_at",
 ];
-export const NUMERIC_FIELDS = ["property_size_sqm", "property_rooms", "property_price", "sort_order"];
+export const NUMERIC_FIELDS = ["sort_order"];
 
 export const sanitizeClientPayload = (data) => {
   if (!data || typeof data !== "object") return data;
@@ -108,31 +108,12 @@ export const mkClient = (overrides = {}) => ({
   description:  "",
   dropbox_url:  "",
   case_type:    "",
-  lead_source:  "",
   banks:        [],
   phones:       [],
   tids:         [],
   timeline:     [],
   custom_calendar_events: [], // אירועי לוח שנה מותאמים — תכונה כללית, לא ספציפית למשכנתאות, עדיין בשימוש פעיל בגרירת לוח השנה
   // ── פרטי הנכס למכירה ──
-  property_street:        "",
-  property_house_number:  "",
-  property_neighborhood:  "",
-  property_city:          "",
-  property_size_sqm:      "",
-  property_rooms:         "",
-  property_floor:         "",
-  property_type:          "",
-  property_condition:     "",
-  property_mamad:         "",
-  property_price:         "",
-  property_on_market_since: "",
-  property_published_on:  "",
-  property_balcony:       "",
-  property_elevator:      "",
-  property_parking:       "",
-  property_seller_notes:  "",
-  property_ad_link:       "",
   whatsapp_initial_sent_at: "",
   whatsapp_last_sent: null,
   whatsapp_log: [],

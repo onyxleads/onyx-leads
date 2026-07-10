@@ -294,8 +294,8 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       // ExecutionDates, ושלושת פריטי הצ'ק-ליסט שהוסרו — כולם נמחקו). collateral_approval_date
       // ו-collateral_appraisal_date נשארים: הם עדיין גב הנתונים של "נשלח WhatsApp"/"נשלח Email"
       // בצ'ק-ליסט (רק שונה התווית/אייקון, לא העמודה עצמה).
-      const SCALAR = ["id","phase","name","first_name","last_name","handler","opFor","case_type","lead_source","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","property_street","property_house_number","property_neighborhood","property_city","property_floor","property_type","property_condition","property_mamad","property_on_market_since","property_published_on","property_balcony","property_elevator","property_parking","property_seller_notes","property_ad_link","whatsapp_initial_sent_at"];
-      const DATE_COLS = ["collateral_approval_date","collateral_appraisal_date","fee_paid_date","property_on_market_since","whatsapp_initial_sent_at"];
+      const SCALAR = ["id","phase","name","first_name","last_name","handler","opFor","case_type","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
+      const DATE_COLS = ["collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
       SCALAR.forEach(k => {
         if (!(k in obj)) return;
         // עמודות date — מחרוזת ריקה הופכת ל-null (Postgres דוחה "" עבור date)
@@ -306,9 +306,7 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       const BOOL = ["collateral_approval_completed","collateral_appraisal_completed","fee_paid"];
       BOOL.forEach(k => { if (k in obj) row[k] = !!obj[k]; });
       // עמודות מספריות — מחרוזת ריקה/לא-תקינה הופכת ל-null (Postgres דוחה "" עבור NUMERIC).
-      // כולל את שדות הנכס המספריים (גודל/חדרים/מחיר) שגרמו לקריסת "invalid input syntax for type numeric".
-      // null תקין גם ל-NUMERIC וגם ל-TEXT, כך שהתיקון בטוח ללא תלות בטיפוס העמודה בפועל.
-      const NUM = ["sort_order","property_size_sqm","property_rooms","property_price"];
+      const NUM = ["sort_order"];
       NUM.forEach(k => {
         if (!(k in obj)) return;
         const v = obj[k];
@@ -407,7 +405,7 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       // העבר את כל שדות הליד פרט ל-phone (שמטופל בנפרד למבנה phones), name ו-phase
       const { phone, ...rest } = ld;
       const client = mkClient({
-        ...rest,                       // כל שדות הנכס הממופים: city/street/number/neighborhood/type/condition/size/rooms/floor/balcony/mamad/parking/elevator/price/market_since/published_on/ad_link/seller_notes/lead_source
+        ...rest,
         name: ld.name || "",
         phase: "incoming",              // תמיד עמודת "ליד נכנס"
         advisor_email: assignedAdvisor, // הטבעת RLS — קריטי

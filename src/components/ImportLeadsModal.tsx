@@ -12,31 +12,9 @@ import { MainDashboard } from "./MainDashboard";
 
 // ── שדות היעד של Wiseli שאליהם ממפים עמודות מהקובץ ──
 // order = סדר התצוגה באשף. required = שדה חובה. numeric = יומר ל-null אם ריק/לא-תקין.
-// הערה: המפתחות הם שמות העמודות האמיתיים ב-DB. שלושה שמות שביקש המשתמש שונו
-// לשמות הקיימים בפועל: house_number (לא property_number), property_price
-// (לא property_asking_price), property_on_market_since (לא property_market_since).
 export const IMPORT_TARGET_FIELDS = [
-  { key:"name",                  label:"שם ליד",            required:true,  match:["שם","שמות","name","לקוח"] },
-  { key:"phone",                 label:"טלפון ליד",         required:false, match:["טלפון","נייד","סלולרי","פלאפון","phone","mobile","tel"] },
-  { key:"property_city",         label:"עיר",               required:false, match:["עיר","יישוב","ישוב","city"] },
-  { key:"property_street",       label:"רחוב",              required:false, match:["רחוב","כתובת","street","address"] },
-  { key:"property_house_number", label:"מספר בית",          required:false, match:["מספר בית","מס' בית","house","number","no"] },
-  { key:"property_neighborhood", label:"שכונה",             required:false, match:["שכונה","neighborhood","neighbourhood"] },
-  { key:"property_type",         label:"סוג הנכס",          required:false, match:["סוג","type","property type"] },
-  { key:"property_condition",    label:"מצב הנכס",          required:false, match:["מצב","condition"] },
-  { key:"property_size_sqm",     label:"גודל בנוי במ״ר",    required:false, numeric:true, match:["גודל","שטח","מ\"ר","מ״ר","מטר","size","sqm","area"] },
-  { key:"property_rooms",        label:"מספר חדרים",        required:false, numeric:true, match:["חדרים","חדר","rooms","room"] },
-  { key:"property_floor",        label:"קומה",              required:false, match:["קומה","floor"] },
-  { key:"property_balcony",      label:"מרפסת",             required:false, match:["מרפסת","balcony"] },
-  { key:"property_mamad",        label:"ממ״ד",              required:false, match:["ממ\"ד","ממ״ד","ממד","mamad","safe room"] },
-  { key:"property_parking",      label:"חניה",              required:false, match:["חניה","חנייה","parking"] },
-  { key:"property_elevator",     label:"מעלית",             required:false, match:["מעלית","elevator","lift"] },
-  { key:"property_price",        label:"מחיר מבוקש",        required:false, numeric:true, match:["מחיר","price","מבוקש","asking"] },
-  { key:"property_on_market_since", label:"נמצאת בשוק מאז", required:false, isDate:true, match:["בשוק","תאריך","since","market","date"] },
-  { key:"property_published_on", label:"פורסם ב-",          required:false, match:["פורסם","publish","platform"] },
-  { key:"lead_source",           label:"מהיכן הגיע הליד",    required:false, match:["מקור","source","קמפיין","campaign"] },
-  { key:"property_ad_link",      label:"לינק למודעה",       required:false, match:["לינק","קישור","link","url","מודעה"] },
-  { key:"property_seller_notes", label:"הערות הליד", required:false, match:["הערות","תיאור","notes","description","comments"] },
+  { key:"name",  label:"שם ליד",    required:true,  match:["שם","שמות","name","לקוח"] },
+  { key:"phone", label:"טלפון ליד", required:false, match:["טלפון","נייד","סלולרי","פלאפון","phone","mobile","tel"] },
 ];
 
 // שדות מספריים — לסניטציה (ריק/לא-תקין → null) בעת היבוא
