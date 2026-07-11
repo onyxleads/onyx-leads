@@ -27,10 +27,19 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   const dtSize  = fontSizes.drawerText || 13;
   const dsSize  = fontSizes.drawerSub  || 11;
 
-  // ── מצב עריכה כללי ──
+  // ── מצב עריכה כללי (שם + סוג התיק, מופעל מכפתור "ערוך" הראשי) ──
   const [editing,    setEditing]    = useState(false);
   const [draft,      setDraft]      = useState(null);   // עותק עריכה של הלקוח
   const [savedFlash, setSavedFlash] = useState(false);
+
+  // ── מצב עריכה עצמאי לקוביית "פרטי הליד" (טלפונים + אימיילים בלבד) ──
+  const [leadEditing, setLeadEditing] = useState(false);
+  const [leadDraft,    setLeadDraft]  = useState(null);
+  const [leadFlash,    setLeadFlash]  = useState(false);
+
+  // ── מצב עריכה עצמאי לקוביית "שכר טרחה" ──
+  const [feeEditing, setFeeEditing] = useState(false);
+  const [feeFlash,   setFeeFlash]   = useState(false);
 
   // ── עדכון טקסטואלי ──
   const [note, setNote] = useState("");
@@ -89,6 +98,42 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
 
   const cancelEdit = () => setEditing(false);
 
+  /* ── "פרטי הליד" — עריכה עצמאית של טלפונים + אימיילים בלבד ── */
+  const startLeadEdit = () => {
+    if (readOnly) return;
+    setLeadDraft({
+      phones:      client.phones?.length ? client.phones.map(p=>({...p})) : [{ number:"", ownerName:"" }],
+      emails_list: client.emails_list?.length ? client.emails_list.map(e=>({...e})) : [{ name:"", email:"" }],
+    });
+    setLeadEditing(true);
+  };
+  const commitLeadEdit = () => {
+    try {
+      if (!client?.id) { alert("שגיאה: מזהה לקוח חסר"); return; }
+      const patch = {
+        phones:      (leadDraft.phones      || []).filter(p => (p?.number||"").trim()),
+        emails_list: (leadDraft.emails_list  || []).filter(e => (e?.email ||"").trim()),
+      };
+      if (typeof onUpdate === "function") onUpdate(client.id, patch);
+      setLeadEditing(false);
+      setLeadFlash(true);
+      setTimeout(() => setLeadFlash(false), 1800);
+    } catch(err) {
+      console.error("שגיאה בשמירת פרטי ליד:", err);
+      alert(`שגיאה בשמירת פרטי הליד:\n${err?.message || err}`);
+    }
+  };
+  const cancelLeadEdit = () => setLeadEditing(false);
+  const setLeadDraftField = (field, val) => setLeadDraft(d => ({ ...d, [field]: val }));
+
+  /* ── "שכר טרחה" — טוגל תצוגה/עריכה. onNotesUpdate כבר שומר לכל הקשה,
+     ה-toggle כאן רק שולט בנראות השדה (view text קבוע ↔ input חי). ── */
+  const toggleFeeEdit = () => {
+    if (readOnly) return;
+    if (feeEditing) { setFeeFlash(true); setTimeout(() => setFeeFlash(false), 1800); }
+    setFeeEditing(v => !v);
+  };
+
   /* עדכון שדה בתוך draft */
   const setDraftField = (field, val) => setDraft(d => ({ ...d, [field]: val }));
 
@@ -114,6 +159,10 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
     (pairs.length===0) ? <span style={{ color:DS }}>—</span> :
     pairs.map((p,i) => (
       <div key={i} style={{ marginBottom:4, display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>
+        <span style={{ color:DT, fontSize:dtSize }}>{p.number||"—"}</span>
+        {p.ownerName && (
+          <span style={{ color:DS, fontSize:dsSize }}>({p.ownerName})</span>
+        )}
         {isPhone && p.number && (
           <a
             href={`https://wa.me/${toWhatsAppPhone(p.number)}`}
@@ -123,12 +172,8 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
             onClick={e => e.stopPropagation()}
             style={{ display:"inline-flex", flexShrink:0 }}
           >
-            <WhatsAppIcon size={15} />
+            <WhatsAppIcon size={16} />
           </a>
-        )}
-        <span style={{ color:DT, fontSize:dtSize }}>{p.number||"—"}</span>
-        {p.ownerName && (
-          <span style={{ color:DS, fontSize:dsSize }}>({p.ownerName})</span>
         )}
       </div>
     ));
@@ -175,37 +220,57 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
           <div style={{ flex:1 }}>
             {/* שם הליד — שם פרטי + משפחה זה לצד זה (עריכה), משולב בתצוגה */}
             {editing ? (
-              <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                <input
-                  value={draft.first_name}
-                  onChange={e => setDraftField("first_name", e.target.value)}
-                  placeholder="שם פרטי"
-                  dir="rtl"
-                  style={{
-                    fontSize:16, fontWeight:900, padding:"5px 10px",
-                    background:DI, border:`1px solid ${phase.color}66`, color:DT,
-                    borderRadius:6, outline:"none", flex:1, minWidth:0,
-                    boxSizing:"border-box", fontFamily:"inherit",
-                  }}
-                />
-                <input
-                  value={draft.last_name}
-                  onChange={e => setDraftField("last_name", e.target.value)}
-                  placeholder="שם משפחה"
-                  dir="rtl"
-                  style={{
-                    fontSize:16, fontWeight:900, padding:"5px 10px",
-                    background:DI, border:`1px solid ${phase.color}66`, color:DT,
-                    borderRadius:6, outline:"none", flex:1, minWidth:0,
-                    boxSizing:"border-box", fontFamily:"inherit",
-                  }}
-                />
-              </div>
+              <>
+                <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שם:</span>
+                <div style={{ display:"flex", gap:8, marginBottom:8, marginTop:4 }}>
+                  <input
+                    value={draft.first_name}
+                    onChange={e => setDraftField("first_name", e.target.value)}
+                    placeholder="שם פרטי"
+                    dir="rtl"
+                    style={{
+                      fontSize:16, fontWeight:900, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", flex:1, minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                  <input
+                    value={draft.last_name}
+                    onChange={e => setDraftField("last_name", e.target.value)}
+                    placeholder="שם משפחה"
+                    dir="rtl"
+                    style={{
+                      fontSize:16, fontWeight:900, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", flex:1, minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                </div>
+              </>
             ) : (
               <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:900, color:DT }}>
+                <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שם:</span>
                 {fullName(client)}
               </h2>
             )}
+
+            {/* ── סוג התיק — בין השם לשלב התיק, אותו סגנון כותרת כמו "שלב התיק" ── */}
+            {client.case_type && (
+              <div style={{
+                display:"flex", flexDirection:"row", alignItems:"center", gap:8,
+                marginBottom:6,
+              }}>
+                <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
+                <span style={{ fontSize:14, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
+                <span style={{ fontSize:16, fontWeight:700, color: TH.name==="Light Mode" ? "#1a1a3a" : (DT||"#e0e0f8") }}>
+                  {client.case_type}
+                </span>
+              </div>
+            )}
+
+            <span style={{ fontSize:14 }}>📍</span>{" "}
             <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שלב התיק:</span>
             <span style={{
               color:phase.color,
@@ -236,20 +301,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
           </div>
         </div>
 
-        {/* ── סוג התיק — אלמנט כותרת עדין ── */}
-        {client.case_type && (
-          <div style={{
-            display:"flex", flexDirection:"row", alignItems:"center", gap:8,
-            padding:"10px 0 4px", marginBottom:2,
-          }}>
-            <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
-            <span style={{ fontSize:13, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
-            <span style={{ fontSize:13, fontWeight:700, color: TH.name==="Light Mode" ? "#1a1a3a" : (DT||"#e0e0f8") }}>
-              {client.case_type}
-            </span>
-          </div>
-        )}
-
         {/* ── הודעת "נשמר" ── */}
         {savedFlash && (
           <div style={{
@@ -264,20 +315,51 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
         {/* ══════════════════════════ VIEW MODE ══════════════════════════ */}
         {!editing && (
           <div style={sectionBox}>
-            {/* כותרת "פרטי הליד" — תואמת בסגנון לבאנר "פרטי הנכס למכירה" */}
+            {/* כותרת "פרטי הליד" + כפתור ערוך/שמור עצמאי לקוביה הזו בלבד */}
             <div style={{
               background: TH.name==="Light Mode" ? "linear-gradient(135deg,#e8f6f6,#d8f0f0)" : "linear-gradient(135deg,#0a2424,#0d1f1f)",
               borderBottom:`1px solid #1a8a8a55`,
-              padding:"11px 16px", display:"flex", alignItems:"center", gap:9,
+              padding:"11px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:9,
               margin:"-16px -16px 14px", borderRadius:"10px 10px 0 0",
             }}>
-              <span style={{ fontSize:16 }}>👤</span>
-              <span style={{ fontSize:13, fontWeight:900, color:"#1a8a8a", letterSpacing:.5, textTransform:"uppercase" }}>פרטי הליד</span>
+              <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+                <span style={{ fontSize:16 }}>👤</span>
+                <span style={{ fontSize:13, fontWeight:900, color:"#1a8a8a", letterSpacing:.5, textTransform:"uppercase" }}>פרטי הליד</span>
+                {leadFlash && (
+                  <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700, animation:"fadeUp .2s ease" }}>✓ נשמר בהצלחה</span>
+                )}
+              </div>
+              {!readOnly && (
+                leadEditing ? (
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={commitLeadEdit} style={{
+                      background:"#1a8a8a", border:"none", color:"#fff",
+                      borderRadius:6, padding:"4px 14px", fontSize:11, fontWeight:800, cursor:"pointer",
+                    }}>שמור</button>
+                    <button onClick={cancelLeadEdit} style={{
+                      background:"transparent", border:`1px solid #1a8a8a66`, color:"#1a8a8a",
+                      borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer",
+                    }}>ביטול</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startLeadEdit}
+                    style={{
+                      background:"transparent", border:`1px solid #1a8a8a66`,
+                      color:"#1a8a8a", borderRadius:6, padding:"4px 12px",
+                      fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background="#1a8a8a"; e.currentTarget.style.color="#fff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="#1a8a8a"; }}
+                  >ערוך</button>
+                )
+              )}
             </div>
             {/* שיוך לסוכן — נגיש לעריכה רק לאדמין/סופר-אדמין. תחת ה-RLS המעודכן,
                 is_admin_or_super() מורשה במפורש לכתוב כל ערך advisor_email (כולל
                 "לידים ולקוחות למיון" בעת הסרת סוכן) — לכן זה בטוח להציג ולערוך כאן
-                רק כש-isAdmin===true. איש מכירות לא רואה את הבורר הזה כלל. */}
+                רק כש-isAdmin===true. איש מכירות לא רואה את הבורר הזה כלל.
+                שים לב: שיוך הסוכן תמיד פעיל, ללא תלות בטוגל ערוך/שמור של הקוביה. */}
             {isAdmin && advisors.length > 0 && (
               <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
                 <span style={fieldLabel}>👤 משויך לסוכן</span>
@@ -299,27 +381,60 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                 </select>
               </div>
             )}
-            {/* טלפונים */}
-            <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
-              <span style={fieldLabel}>📱 טלפון</span>
-              <div style={{ flex:1, textAlign:"right" }}>{renderPairs(client.phones, true)}</div>
-            </div>
-            {/* אימייל */}
-            <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
-              <span style={fieldLabel}>✉️ אימייל</span>
-              <div style={{ flex:1, textAlign:"right" }}>
-                {(() => {
-                  const list = Array.isArray(client.emails_list) ? client.emails_list.filter(e => (e?.email||"").trim()) : [];
-                  if (list.length === 0) return <span style={{ color:DS, fontSize:13 }}>—</span>;
-                  return list.map((e, i) => (
-                    <div key={i} style={{ marginBottom: i<list.length-1?4:0, direction:"ltr", textAlign:"right" }}>
-                      {e.name && <span style={{ color:DS, fontSize:12, marginLeft:6 }}>{e.name}:</span>}
-                      <a href={`mailto:${e.email}`} style={{ color: TH.name==="Light Mode" ? "#1a70c0" : "#6ab0f0", textDecoration:"none", fontSize:13 }}>{e.email}</a>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
+
+            {leadEditing ? (
+              <>
+                {/* ── טלפונים (עריכה) ── */}
+                <div style={{ padding:"12px 0", borderBottom:`1px solid ${DBR}` }}>
+                  <label style={{ ...lbl, fontSize:12, marginBottom:8, color:DS }}>📱 מספרי טלפון</label>
+                  <PairFields
+                    pairs={leadDraft.phones}
+                    onChange={v => setLeadDraftField("phones", v)}
+                    numPlaceholder="05X-XXXXXXX"
+                    namePlaceholder="שם בעל הטלפון"
+                    addLabel="+ הוסף מספר"
+                    inputBg={DI} inputBdr={DBR} inputColor={DT}
+                  />
+                </div>
+                {/* ── אימייל (עריכה) ── */}
+                <div style={{ padding:"12px 0" }}>
+                  <label style={{ ...lbl, fontSize:12, marginBottom:8, color:DS }}>✉️ אימייל</label>
+                  <PairFields
+                    pairs={leadDraft.emails_list}
+                    onChange={v => setLeadDraftField("emails_list", v)}
+                    keyA="email" keyB="name" dirA="ltr"
+                    numPlaceholder="client@email.com"
+                    namePlaceholder="שם בעל האימייל"
+                    addLabel="+ הוסף אימייל"
+                    inputBg={DI} inputBdr={DBR} inputColor={DT}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* טלפונים */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>📱 טלפון</span>
+                  <div style={{ flex:1, textAlign:"right" }}>{renderPairs(client.phones, true)}</div>
+                </div>
+                {/* אימייל */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>✉️ אימייל</span>
+                  <div style={{ flex:1, textAlign:"right" }}>
+                    {(() => {
+                      const list = Array.isArray(client.emails_list) ? client.emails_list.filter(e => (e?.email||"").trim()) : [];
+                      if (list.length === 0) return <span style={{ color:DS, fontSize:13 }}>—</span>;
+                      return list.map((e, i) => (
+                        <div key={i} style={{ marginBottom: i<list.length-1?4:0, direction:"ltr", textAlign:"right" }}>
+                          {e.name && <span style={{ color:DS, fontSize:12, marginLeft:6 }}>{e.name}:</span>}
+                          <a href={`mailto:${e.email}`} style={{ color: TH.name==="Light Mode" ? "#1a70c0" : "#6ab0f0", textDecoration:"none", fontSize:13 }}>{e.email}</a>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -345,33 +460,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                 style={{ background:DI, border:`1px solid ${DBR}`, borderRadius:6, color:DT,
                   padding:"7px 10px", fontSize:12, outline:"none", width:"100%",
                   boxSizing:"border-box", fontFamily:"inherit" }}
-              />
-            </div>
-
-            {/* ── טלפונים ── */}
-            <div style={{ marginBottom:14 }}>
-              <label style={{ ...lbl, fontSize:12, marginBottom:8, color:DS }}>📱 מספרי טלפון</label>
-              <PairFields
-                pairs={draft.phones}
-                onChange={v => setDraftField("phones",v)}
-                numPlaceholder="05X-XXXXXXX"
-                namePlaceholder="שם בעל הטלפון"
-                addLabel="+ הוסף מספר"
-                inputBg={DI} inputBdr={DBR} inputColor={DT}
-              />
-            </div>
-
-            {/* ── אימייל ── */}
-            <div style={{ marginBottom:14 }}>
-              <label style={{ ...lbl, fontSize:12, marginBottom:8, color:DS }}>✉️ אימייל</label>
-              <PairFields
-                pairs={draft.emails_list}
-                onChange={v => setDraftField("emails_list",v)}
-                keyA="email" keyB="name" dirA="ltr"
-                numPlaceholder="client@email.com"
-                namePlaceholder="שם בעל האימייל"
-                addLabel="+ הוסף אימייל"
-                inputBg={DI} inputBdr={DBR} inputColor={DT}
               />
             </div>
 
@@ -533,19 +621,35 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
               border:`1px solid ${DBR}`,
               borderRadius:12, overflow:"hidden",
             }}>
-              {/* כותרת */}
+              {/* כותרת + כפתור ערוך/שמור עצמאי */}
               <div style={{
                 padding:"12px 16px", borderBottom:`1px solid ${DBR}`,
                 background: isLight ? "linear-gradient(135deg,#fffae8,#fff4e0)" : "linear-gradient(135deg,#2a2410,#1e1808)",
+                display:"flex", alignItems:"center", justifyContent:"space-between",
               }}>
                 <span style={{ fontSize:14, fontWeight:900, color:FEE_ACCENT, display:"flex", alignItems:"center", gap:7 }}>
                   💰 שכר טרחה
+                  {feeFlash && (
+                    <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700, animation:"fadeUp .2s ease" }}>✓ נשמר בהצלחה</span>
+                  )}
                 </span>
+                {!readOnly && (
+                  <button
+                    onClick={toggleFeeEdit}
+                    style={{
+                      background: feeEditing ? FEE_ACCENT : "transparent",
+                      border:`1px solid ${FEE_ACCENT}66`,
+                      color: feeEditing ? "#fff" : FEE_ACCENT,
+                      borderRadius:6, padding:"4px 14px",
+                      fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
+                    }}
+                  >{feeEditing ? "שמור" : "ערוך"}</button>
+                )}
               </div>
               {/* תוכן */}
               <div style={{ padding:"14px 16px" }}>
                 <label style={{ display:"block", fontSize:11, fontWeight:700, color:DS, marginBottom:6 }}>שכ"ט מבוקש:</label>
-                {readOnly ? (
+                {(readOnly || !feeEditing) ? (
                   <div style={{ fontSize:15, fontWeight:800, color: client.fee ? feeColor : DS }}>
                     {client.fee || "— לא הוזן —"}
                   </div>
@@ -556,6 +660,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                     onChange={e => onNotesUpdate && onNotesUpdate(client.id, "fee", e.target.value)}
                     placeholder="הוסף סכום או אחוזים לשכר טרחה"
                     dir="rtl"
+                    autoFocus
                     style={{
                       width:"100%", boxSizing:"border-box", padding:"10px 12px",
                       background: DI, border:`1px solid ${DBR}`, borderRadius:9,

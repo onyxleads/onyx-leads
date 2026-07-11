@@ -57,18 +57,30 @@ export function DescriptionField({ value, onChange, readOnly:_readOnly, clientId
         <span style={{ fontSize:14, fontWeight:900, color:ACCENT, display:"flex", alignItems:"center", gap:7 }}>
           📋 תיאור כללי
         </span>
-        {/* כפתור ערוך — כשנעול ולא יועץ */}
-        {!readOnly && locked && (
-          <button
-            onClick={() => setLocked(false)}
-            style={{
-              background:"transparent", border:`1px solid ${ACCENT}66`,
-              color:ACCENT, borderRadius:6, padding:"4px 12px",
-              fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background=ACCENT; e.currentTarget.style.color="#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color=ACCENT; }}
-          >📝 ערוך תיאור</button>
+        {!readOnly && (
+          locked ? (
+            <button
+              onClick={() => setLocked(false)}
+              style={{
+                background:"transparent", border:`1px solid ${ACCENT}66`,
+                color:ACCENT, borderRadius:6, padding:"4px 14px",
+                fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background=ACCENT; e.currentTarget.style.color="#fff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color=ACCENT; }}
+            >ערוך</button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                background: saving ? "#888" : ACCENT,
+                border:"none", color:"#fff",
+                borderRadius:6, padding:"4px 14px",
+                fontSize:11, fontWeight:700, cursor: saving ? "default" : "pointer",
+              }}
+            >{saving ? "שומר…" : "שמור"}</button>
+          )
         )}
         {flash && (
           <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700, animation:"fadeUp .2s ease" }}>
@@ -81,7 +93,7 @@ export function DescriptionField({ value, onChange, readOnly:_readOnly, clientId
       <div style={{ padding:"14px 16px" }}>
         {isLocked && !value ? (
           <div style={{ fontSize:13, color:DS, fontStyle:"italic" }}>
-            {readOnly ? "לא הוזן תיאור" : "אין תיאור עדיין — לחץ על \"ערוך תיאור\" להוספה"}
+            {readOnly ? "לא הוזן תיאור" : "אין תיאור עדיין — לחץ על \"ערוך\" להוספה"}
           </div>
         ) : (
           <textarea
@@ -107,25 +119,6 @@ export function DescriptionField({ value, onChange, readOnly:_readOnly, clientId
             onFocus={e => { if (!isLocked) e.target.style.borderColor=ACCENT; }}
             onBlur={e =>  { if (!isLocked) e.target.style.borderColor=ACCENT+"66"; }}
           />
-        )}
-
-        {/* כפתור שמור — במצב עריכה ולא יועץ */}
-        {!readOnly && !locked && (
-          <div style={{ marginTop:10 }}>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                background: saving ? "#888" : `linear-gradient(135deg,${ACCENT},#1a6ab0)`,
-                color:"#fff", border:"none", borderRadius:7,
-                padding:"9px 22px", fontSize:12, fontWeight:800,
-                cursor: saving ? "default" : "pointer",
-                boxShadow:`0 3px 12px ${ACCENT}44`, transition:"opacity .15s",
-              }}
-              onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity=".85"; }}
-              onMouseLeave={e => e.currentTarget.style.opacity="1"}
-            >{saving ? "שומר…" : "💾 שמור"}</button>
-          </div>
         )}
       </div>
     </div>
