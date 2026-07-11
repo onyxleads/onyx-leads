@@ -4,7 +4,7 @@ import { fullName, toWhatsAppPhone } from "../lib/utils";
 /* ─── WhatsAppCard — שליחת הודעת ווטסאפ ללקוח לפי תבנית נבחרת ────────────────
    • בחירת תבנית מתוך 6 התבניות הגלובליות (dropdown "{מספר} - {כותרת}")
    • הטקסט בר-עריכה מלאה לפני שליחה (גם תבניות 2-6); תבנית 1 = רישום חופשי
-     עם ברירת מחדל https://wiseli.co.il
+     עם ברירת מחדל https://onyx-adv.co.il
    • "שלח ווטסאפ" פותח wa.me עם הטקסט שבתיבה (כולל עריכות הסוכן), מקודד
    • בלחיצה — שני לוגים: (A) הערה מובנית בהיסטוריית ההתנהלות עם שם הסוכן+תבנית+טקסט,
      (B) חותם whatsapp_last_sent (JSONB) שמוצג בתחתית הכרטיסייה
@@ -18,7 +18,7 @@ export function WhatsAppCard({ client, onUpdate, onAddNote, templates=[], myName
   const textSub  = TH.drawerSubText || "#8080b0";
   const WA = "#25d366"; // ירוק ווטסאפ
 
-  const FREE_WRITE_DEFAULT = "https://wiseli.co.il";
+  const FREE_WRITE_DEFAULT = "https://onyx-adv.co.il";
 
   // תבנית נבחרת (id). ברירת מחדל — הראשונה אם קיימת.
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");

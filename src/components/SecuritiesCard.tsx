@@ -139,44 +139,50 @@ export function SecuritiesCard({ data, onChange, dates={}, onDateChange, checks=
               ) : (<>
               {!isEditing && (
                 <div onClick={() => startEdit(f.key)}
-                  style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 16px", cursor:"pointer", transition:"background .12s" }}
+                  style={{ padding:"11px 16px", cursor:"pointer", transition:"background .12s" }}
                   onMouseEnter={e => e.currentTarget.style.background=hoverBg}
                   onMouseLeave={e => e.currentTarget.style.background="transparent"}
                 >
-                  <span style={{ fontSize:14, flexShrink:0 }}>{f.icon}</span>
-                  <span style={{ fontSize:12, fontWeight:700, color:textSub, minWidth:100, flexShrink:0 }}>{f.label}</span>
-                  <span style={{
-                    fontSize:13, flex:1, textAlign:"right",
-                    color: hasValue ? textMain : (isLight ? "#b0b8cc" : "#3a3a60"),
-                    fontStyle: hasValue ? "normal" : "italic", transition:"color .15s",
-                  }}>
-                    {hasValue || "לחץ למילוי…"}
-                  </span>
-                  {/* תיבת סימון — V ירוק, מתפעל בלבד */}
-                  {(() => {
-                    const done = !!checks[f.doneKey];
-                    return (
-                      <span
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (isAdvisor) return;
-                          onCheckChange && onCheckChange(f.doneKey, !done);
-                        }}
-                        title={done ? "בוצע" : "טרם בוצע"}
-                        style={{
-                          width:20, height:20, borderRadius:6, flexShrink:0,
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          background: done ? "#22a060" : "transparent",
-                          border:`2px solid ${done ? "#22a060" : (isLight ? "#c0c8dc" : "#3a3a60")}`,
-                          color:"#fff", fontSize:13, fontWeight:900,
-                          cursor: isAdvisor ? "default" : "pointer",
-                          transition:"all .15s",
-                          boxShadow: done ? "0 0 8px #22a06066" : "none",
-                        }}
-                      >{done ? "✓" : ""}</span>
-                    );
-                  })()}
-                  {isFlash && <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700 }}>✓</span>}
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize:14, flexShrink:0 }}>{f.icon}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:textSub, flexShrink:0 }}>{f.label}</span>
+                    <span style={{ flex:1 }} />
+                    {/* תיבת סימון — V ירוק, מתפעל בלבד */}
+                    {(() => {
+                      const done = !!checks[f.doneKey];
+                      return (
+                        <span
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (isAdvisor) return;
+                            onCheckChange && onCheckChange(f.doneKey, !done);
+                          }}
+                          title={done ? "בוצע" : "טרם בוצע"}
+                          style={{
+                            width:20, height:20, borderRadius:6, flexShrink:0,
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            background: done ? "#22a060" : "transparent",
+                            border:`2px solid ${done ? "#22a060" : (isLight ? "#c0c8dc" : "#3a3a60")}`,
+                            color:"#fff", fontSize:13, fontWeight:900,
+                            cursor: isAdvisor ? "default" : "pointer",
+                            transition:"all .15s",
+                            boxShadow: done ? "0 0 8px #22a06066" : "none",
+                          }}
+                        >{done ? "✓" : ""}</span>
+                      );
+                    })()}
+                    {isFlash && <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700 }}>✓</span>}
+                  </div>
+                  {/* שורת הרישום החופשי — בשורה נפרדת מתחת לכותרת */}
+                  <div style={{ marginTop:6 }}>
+                    <span style={{
+                      fontSize:13, display:"block", textAlign:"right",
+                      color: hasValue ? textMain : (isLight ? "#b0b8cc" : "#3a3a60"),
+                      fontStyle: hasValue ? "normal" : "italic", transition:"color .15s",
+                    }}>
+                      {hasValue || "רישום הערות…"}
+                    </span>
+                  </div>
                 </div>
               )}
 

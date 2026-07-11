@@ -27,8 +27,8 @@ export const CASE_TYPE_OPTIONS = [
 
 /* ─── כרטיסיית ביטחונות ──────────────────────────────────────────────────── */
 export const SEC_FIELDS = [
-  { key:"approval",      label:"נשלח WhatsApp", icon:"💬", placeholder:"תאריך / פרטים…", dateKey:"collateral_approval_date",  doneKey:"collateral_approval_completed" },
-  { key:"appraisal",     label:"נשלח Email",    icon:"✉️", placeholder:"תאריך / פרטים…", dateKey:"collateral_appraisal_date", doneKey:"collateral_appraisal_completed" },
+  { key:"approval",      label:"נשלח WhatsApp היכרות", icon:"💬", placeholder:"רישום הערות…", dateKey:"collateral_approval_date",  doneKey:"collateral_approval_completed" },
+  { key:"appraisal",     label:"נשלח Email היכרות",    icon:"✉️", placeholder:"רישום הערות…", dateKey:"collateral_appraisal_date", doneKey:"collateral_appraisal_completed" },
 ];
 
 
