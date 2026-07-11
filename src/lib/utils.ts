@@ -143,3 +143,15 @@ export const LS = {
   clear: (keys)      => { try { keys.forEach(k => localStorage.removeItem(k)); } catch {} },
 };
 
+// נרמול מספר טלפון ישראלי לפורמט הבינלאומי הנדרש ל-wa.me (ללא +, ללא רווחים/מקפים).
+// מטפל בכל הצורות הנפוצות בהזנה ידנית/יבוא:
+//   050-1234567 / 0501234567 / 972501234567 / +972501234567 / 501234567 (בלי 0 מוביל)
+export const toWhatsAppPhone = (num) => {
+  const d = String(num || "").replace(/\D/g, ""); // משאיר ספרות בלבד
+  if (!d) return "";
+  if (d.startsWith("972")) return d;               // כבר בפורמט בינלאומי
+  if (d.startsWith("0"))   return "972" + d.slice(1); // 0 מוביל → 972
+  return "972" + d;                                 // חסר 0 מוביל (למשל יובא מקובץ) → מוסיף קידומת
+};
+
+

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { fullName } from "../lib/utils";
+import { fullName, toWhatsAppPhone } from "../lib/utils";
 
 /* ─── WhatsAppCard — שליחת הודעת ווטסאפ ללקוח לפי תבנית נבחרת ────────────────
    • בחירת תבנית מתוך 6 התבניות הגלובליות (dropdown "{מספר} - {כותרת}")
@@ -45,11 +45,8 @@ export function WhatsAppCard({ client, onUpdate, onAddNote, templates=[], myName
       ownerName: p.ownerName || fullName(client) || "",
     }));
 
-  // נרמול מספר לפורמט wa.me (ישראל: 0... → 972...)
-  const toWaPhone = (num) => {
-    const d = String(num || "").replace(/\D/g, "");
-    return d.startsWith("0") ? "972" + d.slice(1) : d;
-  };
+  // נרמול מספר לפורמט wa.me — כעת בפונקציה משותפת (lib/utils) כדי שגם כפתורי
+  // ה-WhatsApp המהירים בכרטיסיית הליד ישתמשו באותה לוגיקה בדיוק.
 
   // יומן ההיסטוריה — מערך (חדש), עם נפילה אחורה לרשומה הבודדת הישנה
   const waLog = Array.isArray(client.whatsapp_log) && client.whatsapp_log.length
@@ -78,7 +75,7 @@ export function WhatsAppCard({ client, onUpdate, onAddNote, templates=[], myName
   const doSend = () => {
     const chosen = phoneOptions[recipientIdx];
     if (!chosen) return;
-    const waPhone = toWaPhone(chosen.number);
+    const waPhone = toWhatsAppPhone(chosen.number);
     if (!waPhone) { alert("מספר הטלפון שנבחר אינו תקין."); return; }
     const body = (editText || "").trim();
     if (!body) return;

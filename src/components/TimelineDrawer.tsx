@@ -5,9 +5,9 @@ import { PairFields } from "./PairFields";
 import { SecuritiesCard } from "./SecuritiesCard";
 import { TimelineEntries } from "./TimelineEntries";
 import { WhatsAppCard } from "./WhatsAppCard";
-import { BriefcaseIcon } from "./columns";
+import { BriefcaseIcon, WhatsAppIcon } from "./columns";
 import { PHASES } from "../lib/constants";
-import { fullName, lbl, splitName } from "../lib/utils";
+import { fullName, lbl, splitName, toWhatsAppPhone } from "../lib/utils";
 
 /* ─── מגירת לוח זמנים + עריכת פרטים מלאה ───────────────────────────────── */
 export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUpdate, onDelete, onDuplicate, readOnly=false, isAdmin=false, advisors=[], waTemplates=[], myName="", phases=null, theme:TH={}, fontSizes={} }) {
@@ -109,14 +109,26 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
     }
   };
 
-  /* תצוגת זוגות (view mode) */
-  const renderPairs = (pairs=[]) =>
+  /* תצוגת זוגות (view mode). isPhone=true מוסיף כפתור WhatsApp מהיר לצד כל מספר. */
+  const renderPairs = (pairs=[], isPhone=false) =>
     (pairs.length===0) ? <span style={{ color:DS }}>—</span> :
     pairs.map((p,i) => (
-      <div key={i} style={{ marginBottom:4 }}>
+      <div key={i} style={{ marginBottom:4, display:"flex", alignItems:"center", gap:6, justifyContent:"flex-end" }}>
+        {isPhone && p.number && (
+          <a
+            href={`https://wa.me/${toWhatsAppPhone(p.number)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="שלח הודעת WhatsApp מהירה"
+            onClick={e => e.stopPropagation()}
+            style={{ display:"inline-flex", flexShrink:0 }}
+          >
+            <WhatsAppIcon size={15} />
+          </a>
+        )}
         <span style={{ color:DT, fontSize:dtSize }}>{p.number||"—"}</span>
         {p.ownerName && (
-          <span style={{ color:DS, fontSize:dsSize, marginRight:7 }}>({p.ownerName})</span>
+          <span style={{ color:DS, fontSize:dsSize }}>({p.ownerName})</span>
         )}
       </div>
     ));
@@ -290,7 +302,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
             {/* טלפונים */}
             <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
               <span style={fieldLabel}>📱 טלפון</span>
-              <div style={{ flex:1, textAlign:"right" }}>{renderPairs(client.phones)}</div>
+              <div style={{ flex:1, textAlign:"right" }}>{renderPairs(client.phones, true)}</div>
             </div>
             {/* אימייל */}
             <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>

@@ -3,21 +3,20 @@ import { supabase } from "./supabase";
 /* ─── רישום יועצים ───────────────────────────────────────────────────────────
    רשימת היועצים נטענת מטבלת "advisors" ב-Supabase (ניהול דינמי).
    מנהל המערכת (אדמין) הוא כל אימייל שאינו ברשימת היועצים.
-   הרשימה הקשיחה כאן משמשת רק כ-fallback אם הטבלה לא זמינה.
+   הרשימה כאן משמשת רק כ-fallback אם הטבלה לא זמינה (למשל שגיאת רשת) —
+   ריקה בכוונה, כדי שלא יופיע משתמש "מזויף" שלא קיים בפועל.
    ────────────────────────────────────────────────────────────────────────── */
-export const ADVISORS_FALLBACK = [
-  { email: "tom@bereshit.biz", name: "תום" },
-];
+export const ADVISORS_FALLBACK = [];
 
 // ── אימייל ה-Super Admin היחיד במערכת — קשיח בקוד, לא ניתן לשינוי/הדחה ──
 // כל בדיקת super_admin עוברת דרך הקבוע הזה, אף פעם לא רק לפי metadata,
 // כך שגם אם מישהו ישנה בטעות (או בזדון) את ה-user_metadata שלו ב-Supabase,
 // הבדיקה כאן עדיין תזהה אותו נכון לפי כתובת המייל הקבועה.
-export const SUPER_ADMIN_EMAIL = "bo4wiseli@gmail.com";
+export const SUPER_ADMIN_EMAIL = "bo4onyx@gmail.com";
 
 // קובע תפקיד לפי אובייקט המשתמש המלא מ-Supabase Auth (session.user) + רשימת advisors.
 // היררכיה תלת-שכבתית, נבדקת בסדר עדיפויות קשיח:
-//   1. super_admin  — רק bo4wiseli@gmail.com, תמיד, ללא יוצא מן הכלל, לא תלוי בשום טבלה
+//   1. super_admin  — רק bo4onyx@gmail.com, תמיד, ללא יוצא מן הכלל, לא תלוי בשום טבלה
 //   2. admin        — advisors.role==='admin' (המקור העיקרי, ניתן לעדכון מ"ניהול מוכרנים"),
 //                      או user_metadata.role כגיבוי משני אם הוגדר ידנית ב-Supabase Dashboard
 //   3. sales        — ברירת המחדל לכל משתמש אחר (מודל בעלות-סוכן מבודד, advisor_email===email)

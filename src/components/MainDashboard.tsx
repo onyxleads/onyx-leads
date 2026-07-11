@@ -18,7 +18,7 @@ import { DEFAULT_FONT_SIZES, DEFAULT_THEME, LIGHT_ORIGINAL } from "../lib/theme"
 import { LS, mkClient, nowTimeStr, sanitizeClientPayload, todayStr } from "../lib/utils";
 
 export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBACK, onReloadAdvisors, onLogout }) {
-  // ── מודל 3 רמות: super_admin (קשיח, bo4wiseli@gmail.com בלבד) / admin (metadata) / sales (ברירת מחדל) ──
+  // ── מודל 3 רמות: super_admin (קשיח, bo4onyx@gmail.com בלבד) / admin (metadata) / sales (ברירת מחדל) ──
   const isSuperAdmin = userRole === "super_admin";
   const isAdmin       = userRole === "admin" || isSuperAdmin; // super_admin הוא תמיד גם admin לצורך הרשאות
   const isSales        = !isAdmin; // "איש מכירות" — מבודד לחלוטין ללידים שלו (advisor_email===email)
