@@ -294,8 +294,8 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       // ExecutionDates, ושלושת פריטי הצ'ק-ליסט שהוסרו — כולם נמחקו). collateral_approval_date
       // ו-collateral_appraisal_date נשארים: הם עדיין גב הנתונים של "נשלח WhatsApp"/"נשלח Email"
       // בצ'ק-ליסט (רק שונה התווית/אייקון, לא העמודה עצמה).
-      const SCALAR = ["id","phase","name","first_name","last_name","case_type","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at","mortgage_property_address","mortgage_property_value","mortgage_property_appraisal","mortgage_property_notes"];
-      const DATE_COLS = ["collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
+      const SCALAR = ["id","phase","name","first_name","last_name","case_type","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at","mortgage_property_address","mortgage_property_value","mortgage_property_appraisal","mortgage_property_notes","lead_created_date"];
+      const DATE_COLS = ["collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at","lead_created_date"];
       SCALAR.forEach(k => {
         if (!(k in obj)) return;
         // עמודות date — מחרוזת ריקה הופכת ל-null (Postgres דוחה "" עבור date)

@@ -66,6 +66,7 @@ export const mkId = () =>
 export const TIMESTAMP_DATE_FIELDS = [
   "whatsapp_initial_sent_at",
   "collateral_approval_date", "collateral_appraisal_date", "fee_paid_date",
+  "lead_created_date",
   "created_at", "updated_at",
 ];
 export const NUMERIC_FIELDS = ["sort_order"];
@@ -97,6 +98,7 @@ export const mkClient = (overrides = {}) => ({
   name:         "",
   first_name:   "",
   last_name:    "",
+  lead_created_date: todayStr2(),
   advisor_email: "",
   emails_list:  [],
   fee:          "",

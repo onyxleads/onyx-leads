@@ -7,7 +7,7 @@ import { TimelineEntries } from "./TimelineEntries";
 import { WhatsAppCard } from "./WhatsAppCard";
 import { BriefcaseIcon, WhatsAppIcon } from "./columns";
 import { PHASES } from "../lib/constants";
-import { lbl, splitName, toWhatsAppPhone } from "../lib/utils";
+import { lbl, splitName, toWhatsAppPhone, todayStr2 } from "../lib/utils";
 
 /* ─── מגירת לוח זמנים + עריכת פרטים מלאה ───────────────────────────────── */
 export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUpdate, onDelete, onDuplicate, readOnly=false, isAdmin=false, advisors=[], waTemplates=[], myName="", phases=null, theme:TH={}, fontSizes={} }) {
@@ -64,6 +64,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
     setLeadDraft({
       first_name: nameSplit.first_name,
       last_name:  nameSplit.last_name,
+      lead_created_date: client.lead_created_date || todayStr2(),
       case_type:  client.case_type || "",
       phones:      client.phones?.length ? client.phones.map(p=>({...p})) : [{ number:"", ownerName:"" }],
       emails_list: client.emails_list?.length ? client.emails_list.map(e=>({...e})) : [{ name:"", email:"" }],
@@ -79,6 +80,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
         first_name: fn,
         last_name:  ln,
         name:      [fn, ln].filter(Boolean).join(" ") || client.name,
+        lead_created_date: leadDraft.lead_created_date || null,
         case_type: (leadDraft.case_type || "").trim(),
         phones:      (leadDraft.phones      || []).filter(p => (p?.number||"").trim()),
         emails_list: (leadDraft.emails_list  || []).filter(e => (e?.email ||"").trim()),
@@ -283,6 +285,22 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                     }}
                   />
                 </div>
+                {/* תאריך שנוצר הליד (עריכה) */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>📅 תאריך שנוצר הליד</span>
+                  <input
+                    type="date"
+                    value={leadDraft.lead_created_date || ""}
+                    onChange={e => setLeadDraftField("lead_created_date", e.target.value)}
+                    dir="rtl"
+                    style={{
+                      flex:1, fontSize:14, fontWeight:700, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit", cursor:"pointer",
+                    }}
+                  />
+                </div>
                 {/* סוג התיק (עריכה) */}
                 <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
                   <span style={fieldLabel}><BriefcaseIcon size={13} color={DS} /> סוג התיק</span>
@@ -311,6 +329,15 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                 <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
                   <span style={fieldLabel}>שם משפחה</span>
                   <span style={fieldValue}>{nameSplit.last_name || <span style={{ color:DS }}>—</span>}</span>
+                </div>
+                {/* תאריך שנוצר הליד */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>📅 תאריך שנוצר הליד</span>
+                  <span style={fieldValue}>
+                    {client.lead_created_date
+                      ? client.lead_created_date.split("-").reverse().join("/")
+                      : <span style={{ color:DS }}>—</span>}
+                  </span>
                 </div>
                 {/* סוג התיק */}
                 <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
@@ -407,6 +434,30 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
               </>
             )}
           </div>
+
+        {/* ══════════════════════════ צ'ק-ליסט ליד נכנס ══════════════════════════ */}
+        <SecuritiesCard
+          title="צ׳ק-ליסט ליד נכנס"
+          data={client.securities || { approval:"", appraisal:"" }}
+          onChange={(field, val) => {
+            if (!onUpdate) return;
+            const updated = { ...(client.securities || {}), [field]: val };
+            onUpdate(client.id, "securities", updated);
+          }}
+          dates={{
+            collateral_approval_date:  client.collateral_approval_date  || "",
+            collateral_appraisal_date: client.collateral_appraisal_date || "",
+          }}
+          onDateChange={(dateKey, val) => onUpdate && onUpdate(client.id, dateKey, val)}
+          checks={{
+            collateral_approval_completed:  !!client.collateral_approval_completed,
+            collateral_appraisal_completed: !!client.collateral_appraisal_completed,
+          }}
+          onCheckChange={(doneKey, val) => onUpdate && onUpdate(client.id, doneKey, val)}
+          isAdvisor={readOnly}
+          theme={TH}
+          readOnly={readOnly}
+        />
 
         {/* ══════════════════════════ תיאור התיק ══════════════════════════════ */}
         <DescriptionField
@@ -547,29 +598,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
           templates={waTemplates}
           myName={myName}
           theme={TH}
-        />
-
-        {/* ══════════════════════════ כרטיסיית ביטחונות (צ'ק-ליסט מכירה) ══════════════════════════ */}
-        <SecuritiesCard
-          data={client.securities || { approval:"", appraisal:"" }}
-          onChange={(field, val) => {
-            if (!onUpdate) return;
-            const updated = { ...(client.securities || {}), [field]: val };
-            onUpdate(client.id, "securities", updated);
-          }}
-          dates={{
-            collateral_approval_date:  client.collateral_approval_date  || "",
-            collateral_appraisal_date: client.collateral_appraisal_date || "",
-          }}
-          onDateChange={(dateKey, val) => onUpdate && onUpdate(client.id, dateKey, val)}
-          checks={{
-            collateral_approval_completed:  !!client.collateral_approval_completed,
-            collateral_appraisal_completed: !!client.collateral_appraisal_completed,
-          }}
-          onCheckChange={(doneKey, val) => onUpdate && onUpdate(client.id, doneKey, val)}
-          isAdvisor={readOnly}
-          theme={TH}
-          readOnly={readOnly}
         />
 
         {/* ══════════════════════════ היסטוריית התנהלות התיק ══════════════════ */}
