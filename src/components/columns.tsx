@@ -71,10 +71,6 @@ export const COLUMN_DEFS = [
     },
   },
   {
-    key:"handler", label:"מטופל על ידי", w:140,
-    render:(c,_,T,__,fs=13) => <span style={{ color:T.textPrimary||"#c8c8e0", fontSize:fs }}>{c.handler||"—"}</span>,
-  },
-  {
     key:"timeline", label:"התנהלות התיק", w:200,
     render:(c,ph,T,__,fs=13) => {
       const sub = T.textSecondary||"#6060a0";
@@ -98,10 +94,6 @@ export const COLUMN_DEFS = [
         </div>
       ))}</div>
     ),
-  },
-  {
-    key:"opFor", label:"תפעול ע״י", w:130,
-    render:(c,_,T,__,fs=13) => <span style={{ color:T.textPrimary||"#c8c8e0", fontSize:fs }}>{c.opFor||"—"}</span>,
   },
   {
     key:"phase", label:"שלב", w:160,
@@ -135,7 +127,7 @@ export const COLUMN_DEFS = [
 export function useColumns() {
   const STORAGE_KEY_ORDER  = "onyx_col_order";
   const STORAGE_KEY_WIDTHS = "onyx_col_widths";
-  const DEFAULT_COL_ORDER  = ["name","timeline","phase","phone","handler","opFor","fee"];
+  const DEFAULT_COL_ORDER  = ["name","timeline","phase","phone","fee"];
 
   const [order,  setOrder]  = useState(() => {
     try {

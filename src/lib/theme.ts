@@ -47,7 +47,7 @@ export const LIGHT_ORIGINAL = JSON.parse(JSON.stringify(LIGHT_PRESET));
     // כתוב סדר עמודות רק אם לא קיים — כדי לשמור על סדר שהמשתמש הגדיר
     if (!localStorage.getItem("onyx_col_order")) {
       localStorage.setItem("onyx_col_order", JSON.stringify(
-        ["name","timeline","phase","phone","handler","opFor","fee"]
+        ["name","timeline","phase","phone","fee"]
       ));
     }
   } catch(e) {}
@@ -57,10 +57,8 @@ export const LIGHT_ORIGINAL = JSON.parse(JSON.stringify(LIGHT_PRESET));
 /* ─── פאנל גודל כתב ──────────────────────────────────────────────────────── */
 export const FONT_COLS = [
   { key:"name",       label:"שם הלקוח",          group:"עמודות טבלה" },
-  { key:"handler",    label:"מטופל על ידי",       group:"עמודות טבלה" },
   { key:"timeline",   label:"התנהלות התיק",       group:"עמודות טבלה" },
   { key:"phone",      label:"טלפון",              group:"עמודות טבלה" },
-  { key:"opFor",      label:"תפעול ע״י",          group:"עמודות טבלה" },
   { key:"fee",        label:"שכר טרחה",           group:"עמודות טבלה" },
   { key:"phase",      label:"שלב",                group:"עמודות טבלה" },
   { key:"colHeader",  label:"כותרת עמודות",       group:"כותרת טבלה" },
@@ -69,12 +67,10 @@ export const FONT_COLS = [
 ];
 export const DEFAULT_FONT_SIZES = {
   name:       18,
-  handler:    13,
   timeline:   17,
   bank:       13,
   phone:      13,
   tid:        13,
-  opFor:      13,
   fee:        13,
   phase:      13,
   colHeader:  11,

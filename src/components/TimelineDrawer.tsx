@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { DescriptionField } from "./DescriptionField";
+import { useState, useRef } from "react";
+import { DescriptionField, UnsavedChangesModal } from "./DescriptionField";
 import { DropboxField } from "./DropboxField";
 import { PairFields } from "./PairFields";
 import { SecuritiesCard } from "./SecuritiesCard";
@@ -41,6 +41,17 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   const [feeEditing, setFeeEditing] = useState(false);
   const [feeFlash,   setFeeFlash]   = useState(false);
 
+  // ── מעקב אחר שינויים שלא נשמרו ב"תיאור כללי", כדי לשאול לפני סגירת כל הכרטיסייה ──
+  const descRef = useRef(null);
+  const [descDirty, setDescDirty] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  /* בקשת סגירה — אם יש טיוטת תיאור שלא נשמרה, שואלים לפני שסוגרים בפועל */
+  const requestClose = () => {
+    if (descDirty) { setShowCloseConfirm(true); return; }
+    onClose();
+  };
+
   // ── עדכון טקסטואלי ──
   const [note, setNote] = useState("");
 
@@ -53,8 +64,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
       name:      client.name,
       first_name: sp.first_name,
       last_name:  sp.last_name,
-      handler:   client.handler   || "",
-      opFor:     client.opFor     || "",
       emails_list: client.emails_list?.length ? client.emails_list.map(e=>({...e})) : [{ name:"", email:"" }],
       fee:       client.fee       || "",
       case_type: client.case_type || "",
@@ -75,8 +84,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
         first_name: fn,
         last_name:  ln,
         name:      [fn, ln].filter(Boolean).join(" ") || (draft.name || "").trim() || client.name,
-        handler:   (draft.handler  || "").trim(),
-        opFor:     (draft.opFor    || "").trim(),
         emails_list: (draft.emails_list || []).filter(e => (e?.email||"").trim()),
         fee:       (draft.fee      || "").trim(),
         case_type: (draft.case_type|| "").trim(),
@@ -200,7 +207,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
     <div style={{
       position:"fixed", inset:0, background:"rgba(0,0,0,.65)",
       display:"flex", justifyContent:"flex-end", zIndex:900,
-    }} onClick={e => e.target===e.currentTarget && onClose()}>
+    }} onClick={e => e.target===e.currentTarget && requestClose()}>
       <div dir="rtl" style={{
         background:DB, width:500, maxWidth:"96vw", height:"100%",
         overflowY:"auto", borderRight:`2px solid ${DBR}`,
@@ -256,18 +263,37 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
               </h2>
             )}
 
-            {/* ── סוג התיק — בין השם לשלב התיק, אותו סגנון כותרת כמו "שלב התיק" ── */}
-            {client.case_type && (
-              <div style={{
-                display:"flex", flexDirection:"row", alignItems:"center", gap:8,
-                marginBottom:6,
-              }}>
+            {/* ── סוג התיק — בין השם לשלב התיק. בעריכה: שדה קלט בדיוק כמו שם הליד. ── */}
+            {editing ? (
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
                 <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
                 <span style={{ fontSize:14, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
-                <span style={{ fontSize:16, fontWeight:700, color: TH.name==="Light Mode" ? "#1a1a3a" : (DT||"#e0e0f8") }}>
-                  {client.case_type}
-                </span>
+                <input
+                  value={draft.case_type || ""}
+                  onChange={e => setDraftField("case_type", e.target.value)}
+                  placeholder="מחזור / רכישה מקבלן / רכישה יד שנייה…"
+                  dir="rtl"
+                  style={{
+                    fontSize:16, fontWeight:700, padding:"5px 10px",
+                    background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                    borderRadius:6, outline:"none", flex:1, minWidth:0,
+                    boxSizing:"border-box", fontFamily:"inherit",
+                  }}
+                />
               </div>
+            ) : (
+              client.case_type && (
+                <div style={{
+                  display:"flex", flexDirection:"row", alignItems:"center", gap:8,
+                  marginBottom:6,
+                }}>
+                  <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
+                  <span style={{ fontSize:14, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
+                  <span style={{ fontSize:16, fontWeight:700, color: TH.name==="Light Mode" ? "#1a1a3a" : (DT||"#e0e0f8") }}>
+                    {client.case_type}
+                  </span>
+                </div>
+              )
             )}
 
             <span style={{ fontSize:14 }}>📍</span>{" "}
@@ -295,7 +321,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                 }}>ערוך</button>
               )
             )}
-            <button onClick={onClose} style={{
+            <button onClick={requestClose} style={{
               background:"none", border:"none", color:DS, fontSize:22, cursor:"pointer",
             }}>✕</button>
           </div>
@@ -448,21 +474,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
               <span>✏️</span> עריכת פרטי לקוח
             </div>
 
-            {/* סוג התיק */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ ...lbl, color:DS, display:"flex", alignItems:"center", gap:5 }}>
-                <BriefcaseIcon size={13} color={DS} /> סוג התיק
-              </label>
-              <input dir="rtl"
-                value={draft.case_type || ""}
-                onChange={e => setDraftField("case_type", e.target.value)}
-                placeholder="מחזור / רכישה מקבלן / רכישה יד שנייה…"
-                style={{ background:DI, border:`1px solid ${DBR}`, borderRadius:6, color:DT,
-                  padding:"7px 10px", fontSize:12, outline:"none", width:"100%",
-                  boxSizing:"border-box", fontFamily:"inherit" }}
-              />
-            </div>
-
             {/* כפתורי שמירה/ביטול */}
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={commitEdit} style={{
@@ -482,6 +493,8 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
 
         {/* ══════════════════════════ תיאור התיק ══════════════════════════════ */}
         <DescriptionField
+          ref={descRef}
+          onDirtyChange={setDescDirty}
           value={client.description || ""}
           onChange={val => onNotesUpdate && onNotesUpdate(client.id, "description", val)}
           clientId={client.id}
@@ -803,6 +816,22 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
         )}
 
       </div>
+
+      {showCloseConfirm && (
+        <UnsavedChangesModal
+          message="בטוח שלא לשמור את מה שרשמת בתיאור הכללי?"
+          onSave={() => {
+            descRef.current?.save();
+            setShowCloseConfirm(false);
+            onClose();
+          }}
+          onDiscard={() => {
+            descRef.current?.discard();
+            setShowCloseConfirm(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }

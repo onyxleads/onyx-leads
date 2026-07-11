@@ -294,7 +294,7 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       // ExecutionDates, ושלושת פריטי הצ'ק-ליסט שהוסרו — כולם נמחקו). collateral_approval_date
       // ו-collateral_appraisal_date נשארים: הם עדיין גב הנתונים של "נשלח WhatsApp"/"נשלח Email"
       // בצ'ק-ליסט (רק שונה התווית/אייקון, לא העמודה עצמה).
-      const SCALAR = ["id","phase","name","first_name","last_name","handler","opFor","case_type","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
+      const SCALAR = ["id","phase","name","first_name","last_name","case_type","advisor_email","fee","fee_paid_notes","description","dropbox_url","collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
       const DATE_COLS = ["collateral_approval_date","collateral_appraisal_date","fee_paid_date","whatsapp_initial_sent_at"];
       SCALAR.forEach(k => {
         if (!(k in obj)) return;
@@ -769,7 +769,7 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
         {/* ── Header ── */}
         <div style={{
           background:T.headerBg, borderBottom:`1px solid ${T.border}`,
-          padding:"0 12px", height:60,
+          padding:"8px 12px", minHeight:60,
           display:"flex", alignItems:"center", gap:8,
           position:"sticky", top:0, zIndex:200,
           boxShadow:"0 2px 24px #0009",
@@ -785,30 +785,9 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
           {/* מרווח גמיש */}
           <div style={{ flex:1, minWidth:0 }} />
 
-          {/* ── בורר "כל המוכרנים" — אדמין/סופר-אדמין בלבד; איש מכירות לא רואה את זה כלל ── */}
-          {isAdmin && selectableAdvisors.length > 0 && (
-            <select
-              value={selectedAdvisor}
-              onChange={e => setSelectedAdvisor(e.target.value)}
-              dir="rtl"
-              title="סינון לפי מוכרן"
-              style={{
-                background:T.rowBg, border:`1px solid ${T.border}`,
-                borderRadius:8, color:T.textPrimary, fontSize:11,
-                padding:"6px 8px", outline:"none", fontFamily:"inherit",
-                cursor:"pointer", flexShrink:0, maxWidth:120,
-                fontWeight:700,
-              }}
-            >
-              <option value="all">👥 כל המוכרנים</option>
-              {selectableAdvisors.map(a => (
-                <option key={a.email} value={a.email}>{a.name}</option>
-              ))}
-            </select>
-          )}
-
-          {/* ── תג זהות + תפקיד ── */}
-          <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
+          {/* ── משתמש נוכחי + בורר "כל המוכרנים" — מוערמים אנכית זה מעל זה כדי לחסוך רוחב בכותרת ── */}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4, flexShrink:0 }}>
+            {/* ── תג זהות + תפקיד (מעל) ── */}
             <span style={{
               background: isSuperAdmin ? "#e8a83822" : isAdmin ? "#3dba7e22" : "#7c6fcd22",
               color:       isSuperAdmin ? "#b07818"   : isAdmin ? "#2a8a5a"  : "#7c6fcd",
@@ -818,6 +797,28 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
             }}>
               {isSuperAdmin ? "👑 אדמין ראשי" : isAdmin ? "⚡ אדמין" : `👤 ${getAdvisorName(userEmail, advisors) || userEmail || "משתמש"}`}
             </span>
+
+            {/* ── בורר "כל המוכרנים" (מתחת) — אדמין/סופר-אדמין בלבד; איש מכירות לא רואה את זה כלל ── */}
+            {isAdmin && selectableAdvisors.length > 0 && (
+              <select
+                value={selectedAdvisor}
+                onChange={e => setSelectedAdvisor(e.target.value)}
+                dir="rtl"
+                title="סינון לפי מוכרן"
+                style={{
+                  background:T.rowBg, border:`1px solid ${T.border}`,
+                  borderRadius:8, color:T.textPrimary, fontSize:11,
+                  padding:"4px 8px", outline:"none", fontFamily:"inherit",
+                  cursor:"pointer", maxWidth:130,
+                  fontWeight:700,
+                }}
+              >
+                <option value="all">👥 כל המוכרנים</option>
+                {selectableAdvisors.map(a => (
+                  <option key={a.email} value={a.email}>{a.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* ── כפתור לוח שנה ── */}

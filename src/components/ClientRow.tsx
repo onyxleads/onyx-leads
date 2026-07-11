@@ -12,8 +12,6 @@ export const ClientRow = memo(function ClientRow({ client, phase, onOpen, onPhas
   const safe = useMemo(() => ({
     ...client,
     name:     client?.name     || "—",
-    handler:  client?.handler  || "",
-    opFor:    client?.opFor    || "",
     banks:    Array.isArray(client?.banks)    ? client.banks    : [],
     phones:   Array.isArray(client?.phones)   ? client.phones   : [],
     tids:     Array.isArray(client?.tids)     ? client.tids     : [],

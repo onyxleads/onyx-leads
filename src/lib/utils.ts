@@ -97,8 +97,6 @@ export const mkClient = (overrides = {}) => ({
   name:         "",
   first_name:   "",
   last_name:    "",
-  handler:      "",
-  opFor:        "",
   advisor_email: "",
   emails_list:  [],
   fee:          "",
