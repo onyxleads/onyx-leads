@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { MainDashboard } from "./MainDashboard";
+import { todayStr2 } from "../lib/utils";
 
 /* ─── מודל יבוא לידים מקובץ Excel/CSV ──────────────────────────────────────
    ממפה כותרות בעברית או אנגלית בצורה גמישה לשדות הלקוח. הפרסור מתבצע בצד
@@ -10,11 +11,14 @@ import { MainDashboard } from "./MainDashboard";
    כדי שכל לוגיקת ה-RLS והשיוך תהיה במקום אחד מרכזי.
    ──────────────────────────────────────────────────────────────────────── */
 
-// ── שדות היעד של Wiseli שאליהם ממפים עמודות מהקובץ ──
+// ── שדות היעד של Onyx Leads שאליהם ממפים עמודות מהקובץ ──
 // order = סדר התצוגה באשף. required = שדה חובה. numeric = יומר ל-null אם ריק/לא-תקין.
 export const IMPORT_TARGET_FIELDS = [
-  { key:"name",  label:"שם ליד",    required:true,  match:["שם","שמות","name","לקוח"] },
-  { key:"phone", label:"טלפון ליד", required:false, match:["טלפון","נייד","סלולרי","פלאפון","phone","mobile","tel"] },
+  { key:"first_name",  label:"שם פרטי",    required:true,  match:["שם פרטי","first name","firstname","שם"] },
+  { key:"last_name",   label:"שם משפחה",   required:false, match:["שם משפחה","last name","lastname","משפחה"] },
+  { key:"phone",       label:"טלפון",      required:false, match:["טלפון","נייד","סלולרי","פלאפון","phone","mobile","tel"] },
+  { key:"email",       label:"אימייל",     required:false, match:["אימייל","מייל","email","e-mail","mail"] },
+  { key:"description", label:"תיאור כללי", required:false, match:["תיאור","הערות","description","notes","comment"] },
 ];
 
 // שדות מספריים — לסניטציה (ריק/לא-תקין → null) בעת היבוא
@@ -39,7 +43,7 @@ export function autoMatchHeaders(headers) {
   return mapping;
 }
 
-export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
+export function ImportLeadsModal({ onClose, onImport, advisors=[], theme:T={} }) {
   const isLight = T.name === "Light Mode";
   const [step,     setStep]     = useState("upload"); // "upload" | "map"
   const [dragOver, setDragOver] = useState(false);
@@ -49,6 +53,9 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
   const [headers,  setHeaders]  = useState([]);   // כותרות הקובץ (שורה ראשונה)
   const [matrix,   setMatrix]   = useState([]);   // כל השורות (כולל כותרות)
   const [mapping,  setMapping]  = useState({});   // { fieldKey: headerIndex | "" }
+  // ── שני ערכים ברמת כל האצווה (לא ממופים מהקובץ, נבחרים פעם אחת לכל היבוא) ──
+  const [batchCreatedDate, setBatchCreatedDate] = useState(todayStr2());
+  const [batchAdvisorEmail, setBatchAdvisorEmail] = useState("");
   const fileInputRef = useRef(null);
 
   const panelBg = isLight ? "#ffffff" : "#13132b";
@@ -114,15 +121,16 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
   const resetAll = () => {
     setStep("upload"); setError(""); setFileName("");
     setHeaders([]); setMatrix([]); setMapping({});
+    setBatchCreatedDate(todayStr2()); setBatchAdvisorEmail("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // ── שלב 4: ביצוע — קריאת כל השורות לפי המיפוי שנבחר, ושליחה ל-onImport ──
   const finishImport = async () => {
     setError("");
-    // ולידציה: שם ליד הוא חובה
-    if (mapping.name === "" || mapping.name === undefined) {
-      setError('חובה למפות עמודה לשדה "שם ליד".');
+    // ולידציה: שם פרטי הוא חובה
+    if (mapping.first_name === "" || mapping.first_name === undefined) {
+      setError('חובה למפות עמודה לשדה "שם פרטי".');
       return;
     }
     // בנה את רשימת הלידים מתוך כל שורות הנתונים, לפי אינדקסי העמודות שנבחרו
@@ -134,15 +142,18 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
     for (let i = 1; i < matrix.length; i++) {
       const row = matrix[i];
       if (!row || row.every(c => String(c ?? "").trim() === "")) continue;
-      const name = valAt(row, "name");
-      if (!name) continue; // דלג על שורות ללא שם
-      // בנה את אובייקט הליד דינמית מכל שדות היעד הממופים (כל 21 השדות)
+      const firstName = valAt(row, "first_name");
+      if (!firstName) continue; // דלג על שורות ללא שם פרטי
+      // בנה את אובייקט הליד דינמית מכל שדות היעד הממופים
       const lead = {};
       IMPORT_TARGET_FIELDS.forEach(f => { lead[f.key] = valAt(row, f.key); });
+      // ערכי האצווה — זהים לכל השורות ביבוא הזה (נבחרו פעם אחת בראש האשף)
+      lead.lead_created_date = batchCreatedDate;
+      if (batchAdvisorEmail) lead.advisor_email = batchAdvisorEmail;
       leads.push(lead);
     }
     if (leads.length === 0) {
-      setError("לא נמצאו שורות תקינות (כל שורה חייבת ערך בעמודת שם הליד).");
+      setError("לא נמצאו שורות תקינות (כל שורה חייבת ערך בעמודת שם פרטי).");
       return;
     }
     setBusy(true);
@@ -202,7 +213,7 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
               }}>
                 <div style={{ fontWeight:800, color:txt, marginBottom:5 }}>📋 איך זה עובד:</div>
                 העלה קובץ עם שורת כותרות בשורה הראשונה. בשלב הבא תוכל להתאים כל עמודה
-                מהקובץ לשדה המתאים ב-Wiseli — לא חובה שהכותרות יהיו בשם מסוים.
+                מהקובץ לשדה המתאים ב-Onyx Leads — לא חובה שהכותרות יהיו בשם מסוים.
               </div>
 
               <div
@@ -245,7 +256,7 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
               </div>
 
               <div style={{ fontSize:11.5, color:sub, marginBottom:12, lineHeight:1.6 }}>
-                התאם כל שדה ב-Wiseli (מימין) לעמודה מהקובץ שלך (משמאל). התאמות שזוהו
+                התאם כל שדה ב-Onyx Leads (מימין) לעמודה מהקובץ שלך (משמאל). התאמות שזוהו
                 אוטומטית כבר נבחרו — אפשר לשנות. שדה ללא התאמה יישאר ריק.
               </div>
 
@@ -278,6 +289,52 @@ export function ImportLeadsModal({ onClose, onImport, theme:T={} }) {
                     </select>
                   </div>
                 ))}
+              </div>
+
+              {/* ── ערכי אצווה — זהים לכל הלידים ביבוא הזה (לא ממופים מהקובץ) ── */}
+              <div style={{
+                background:cardBg, border:`1px solid ${bdr}`, borderRadius:9,
+                padding:"12px 13px", marginBottom:16,
+              }}>
+                <div style={{ fontSize:11, fontWeight:800, color:txt, marginBottom:10 }}>
+                  ⚙️ הגדרות ליבוא הזה (חלות על כל הלידים המיובאים)
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {/* תאריך שנוצר הליד */}
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ flex:"0 0 38%", fontSize:13, fontWeight:700, color:txt }}>📅 תאריך שנוצר הליד</div>
+                    <input
+                      type="date"
+                      value={batchCreatedDate}
+                      onChange={e => setBatchCreatedDate(e.target.value)}
+                      dir="rtl"
+                      style={{
+                        flex:1, minWidth:0, background:inputBg, border:`1px solid ${bdr}`,
+                        borderRadius:7, color:txt, padding:"8px 10px", fontSize:12.5,
+                        outline:"none", fontFamily:"inherit", cursor:"pointer",
+                      }}
+                    />
+                  </div>
+                  {/* משוייך לסוכן */}
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ flex:"0 0 38%", fontSize:13, fontWeight:700, color:txt }}>👤 משוייך לסוכן</div>
+                    <select
+                      value={batchAdvisorEmail}
+                      onChange={e => setBatchAdvisorEmail(e.target.value)}
+                      dir="rtl"
+                      style={{
+                        flex:1, minWidth:0, background:inputBg, border:`1px solid ${bdr}`,
+                        borderRadius:7, color:txt, padding:"8px 10px", fontSize:12.5,
+                        outline:"none", fontFamily:"inherit", cursor:"pointer",
+                      }}
+                    >
+                      <option value="">— ברירת מחדל —</option>
+                      {advisors.map(a => (
+                        <option key={a.email} value={a.email}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* כפתורי פעולה */}

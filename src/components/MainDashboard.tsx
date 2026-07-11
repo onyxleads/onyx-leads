@@ -402,16 +402,24 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
     // toDbRow מבצע את הסניטציה המספרית (size/rooms/price ריק→null) ואת טיפול התאריך,
     // כך שאין צורך לסנן כאן ידנית — מספיק להעביר את הערכים כפי שהם.
     const rows = leads.map(ld => {
-      // העבר את כל שדות הליד פרט ל-phone (שמטופל בנפרד למבנה phones), name ו-phase
-      const { phone, ...rest } = ld;
+      // העבר את כל שדות הליד פרט ל-phone/email (מטופלים בנפרד למבנים phones/emails_list)
+      const { phone, email, first_name, last_name, advisor_email, ...rest } = ld;
+      const fullNameStr = [first_name, last_name].filter(Boolean).join(" ").trim();
       const client = mkClient({
         ...rest,
-        name: ld.name || "",
+        first_name: first_name || "",
+        last_name:  last_name  || "",
+        name:       fullNameStr,
         phase: "incoming",              // תמיד עמודת "ליד נכנס"
-        advisor_email: assignedAdvisor, // הטבעת RLS — קריטי
+        // אם נבחר סוכן ספציפי באשף היבוא — הוא גובר; אחרת ברירת המחדל הרגילה
+        advisor_email: (advisor_email || "").trim() || assignedAdvisor, // הטבעת RLS — קריטי
         // טלפון בודד מהקובץ → מבנה phones הקיים
         phones: (phone || "").trim()
-          ? [{ number: phone.trim(), ownerName: ld.name || "" }]
+          ? [{ number: phone.trim(), ownerName: fullNameStr }]
+          : [],
+        // אימייל בודד מהקובץ → מבנה emails_list הקיים
+        emails_list: (email || "").trim()
+          ? [{ email: email.trim(), name: fullNameStr }]
           : [],
       });
       return toDbRow(client);
@@ -695,10 +703,10 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
     // סינון חכם: לקוחות בשלב ארכיון (is_archive===true) מוחרגים מהמדדים הפעילים.
     const active = advisorScoped.filter(c => !archivePhaseIds.has(c.phase));
     return [
-      { label:"סה״כ לידים",              val: active.length },
+      { label:"ליד נכנס - להתקשר",        val: active.filter(c=>c.phase==="incoming").length },
       { label:"פולואו אפ - מעוניינים",    val: active.filter(c=>c.phase==="followup_interested").length },
       { label:"נסגרו כלקוח",              val: active.filter(c=>c.phase==="closed_client").length },
-      { label:"לא מעוניינים / לא להתקשר", val: active.filter(c=>["followup_not_interested","do_not_call"].includes(c.phase)).length },
+      { label:"פולואו-אפ - לא מעוניינים", val: active.filter(c=>c.phase==="followup_not_interested").length },
     ];
   }, [advisorScoped, archivePhaseIds]);
 
@@ -1222,6 +1230,7 @@ export function MainDashboard({ userRole, userEmail, advisors = ADVISORS_FALLBAC
       {showImport && (
         <ImportLeadsModal
           theme={T}
+          advisors={advisors}
           onClose={() => setShowImport(false)}
           onImport={async (leads) => {
             const count = await handleImportLeads(leads);
