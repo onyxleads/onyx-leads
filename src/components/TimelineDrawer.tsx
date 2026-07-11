@@ -7,7 +7,7 @@ import { TimelineEntries } from "./TimelineEntries";
 import { WhatsAppCard } from "./WhatsAppCard";
 import { BriefcaseIcon, WhatsAppIcon } from "./columns";
 import { PHASES } from "../lib/constants";
-import { fullName, lbl, splitName, toWhatsAppPhone } from "../lib/utils";
+import { lbl, splitName, toWhatsAppPhone } from "../lib/utils";
 
 /* ─── מגירת לוח זמנים + עריכת פרטים מלאה ───────────────────────────────── */
 export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUpdate, onDelete, onDuplicate, readOnly=false, isAdmin=false, advisors=[], waTemplates=[], myName="", phases=null, theme:TH={}, fontSizes={} }) {
@@ -27,12 +27,7 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   const dtSize  = fontSizes.drawerText || 13;
   const dsSize  = fontSizes.drawerSub  || 11;
 
-  // ── מצב עריכה כללי (שם + סוג התיק, מופעל מכפתור "ערוך" הראשי) ──
-  const [editing,    setEditing]    = useState(false);
-  const [draft,      setDraft]      = useState(null);   // עותק עריכה של הלקוח
-  const [savedFlash, setSavedFlash] = useState(false);
-
-  // ── מצב עריכה עצמאי לקוביית "פרטי הליד" (טלפונים + אימיילים בלבד) ──
+  // ── מצב עריכה עצמאי לקוביית "פרטי הליד" (שם + סוג התיק + טלפונים + אימיילים) ──
   const [leadEditing, setLeadEditing] = useState(false);
   const [leadDraft,    setLeadDraft]  = useState(null);
   const [leadFlash,    setLeadFlash]  = useState(false);
@@ -40,6 +35,10 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   // ── מצב עריכה עצמאי לקוביית "שכר טרחה" ──
   const [feeEditing, setFeeEditing] = useState(false);
   const [feeFlash,   setFeeFlash]   = useState(false);
+
+  // ── מצב עריכה עצמאי לקוביית "פרטי הנכס למשכון" ──
+  const [propEditing, setPropEditing] = useState(false);
+  const [propFlash,   setPropFlash]   = useState(false);
 
   // ── מעקב אחר שינויים שלא נשמרו ב"תיאור כללי", כדי לשאול לפני סגירת כל הכרטיסייה ──
   const descRef = useRef(null);
@@ -55,60 +54,17 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   // ── עדכון טקסטואלי ──
   const [note, setNote] = useState("");
 
-  /* פתיחת מצב עריכה – מעתיק את כל שדות הלקוח */
-  const startEdit = () => {
-    if (readOnly) return;
-    const sp = (!(client.first_name||"").trim() && !(client.last_name||"").trim() && (client.name||"").trim())
-      ? splitName(client.name) : { first_name: client.first_name||"", last_name: client.last_name||"" };
-    setDraft({
-      name:      client.name,
-      first_name: sp.first_name,
-      last_name:  sp.last_name,
-      emails_list: client.emails_list?.length ? client.emails_list.map(e=>({...e})) : [{ name:"", email:"" }],
-      fee:       client.fee       || "",
-      case_type: client.case_type || "",
-      banks:     Array.isArray(client.banks) ? [...client.banks] : [],
-      phones:    client.phones?.length ? client.phones.map(p=>({...p})) : [{ number:"", ownerName:"" }],
-      tids:      client.tids?.length   ? client.tids.map(t=>({...t}))   : [{ number:"", ownerName:"" }],
-    });
-    setEditing(true);
-  };
+  /* פיצול שם קיים לשם פרטי/משפחה אם עדיין לא מפוצל (תאימות לאחור) */
+  const nameSplit = (!(client.first_name||"").trim() && !(client.last_name||"").trim() && (client.name||"").trim())
+    ? splitName(client.name) : { first_name: client.first_name||"", last_name: client.last_name||"" };
 
-  /* שמירת העריכה — עדכון אטומי אחד למניעת race conditions */
-  const commitEdit = () => {
-    try {
-      if (!client?.id) { alert("שגיאה: מזהה לקוח חסר"); return; }
-      const fn = (draft.first_name || "").trim();
-      const ln = (draft.last_name  || "").trim();
-      const patch = {
-        first_name: fn,
-        last_name:  ln,
-        name:      [fn, ln].filter(Boolean).join(" ") || (draft.name || "").trim() || client.name,
-        emails_list: (draft.emails_list || []).filter(e => (e?.email||"").trim()),
-        fee:       (draft.fee      || "").trim(),
-        case_type: (draft.case_type|| "").trim(),
-        banks:     (draft.banks    || []).filter(b => (b||"").trim()),
-        phones:    (draft.phones   || []).filter(p => (p?.number||"").trim()),
-        tids:      (draft.tids     || []).filter(t => (t?.number||"").trim()),
-      };
-      if (typeof onUpdate === "function") {
-        onUpdate(client.id, patch);
-      }
-      setEditing(false);
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1800);
-    } catch(err) {
-      console.error("שגיאה ב-commitEdit:", err);
-      alert(`שגיאה בשמירת פרטי לקוח:\n${err?.message || err}`);
-    }
-  };
-
-  const cancelEdit = () => setEditing(false);
-
-  /* ── "פרטי הליד" — עריכה עצמאית של טלפונים + אימיילים בלבד ── */
+  /* ── "פרטי הליד" — עריכה עצמאית של שם + סוג התיק + טלפונים + אימיילים ── */
   const startLeadEdit = () => {
     if (readOnly) return;
     setLeadDraft({
+      first_name: nameSplit.first_name,
+      last_name:  nameSplit.last_name,
+      case_type:  client.case_type || "",
       phones:      client.phones?.length ? client.phones.map(p=>({...p})) : [{ number:"", ownerName:"" }],
       emails_list: client.emails_list?.length ? client.emails_list.map(e=>({...e})) : [{ name:"", email:"" }],
     });
@@ -117,7 +73,13 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
   const commitLeadEdit = () => {
     try {
       if (!client?.id) { alert("שגיאה: מזהה לקוח חסר"); return; }
+      const fn = (leadDraft.first_name || "").trim();
+      const ln = (leadDraft.last_name  || "").trim();
       const patch = {
+        first_name: fn,
+        last_name:  ln,
+        name:      [fn, ln].filter(Boolean).join(" ") || client.name,
+        case_type: (leadDraft.case_type || "").trim(),
         phones:      (leadDraft.phones      || []).filter(p => (p?.number||"").trim()),
         emails_list: (leadDraft.emails_list  || []).filter(e => (e?.email ||"").trim()),
       };
@@ -141,8 +103,12 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
     setFeeEditing(v => !v);
   };
 
-  /* עדכון שדה בתוך draft */
-  const setDraftField = (field, val) => setDraft(d => ({ ...d, [field]: val }));
+  /* ── "פרטי הנכס למשכון" — אותו טוגל תצוגה/עריכה, שומר ישירות דרך onNotesUpdate ── */
+  const togglePropEdit = () => {
+    if (readOnly) return;
+    if (propEditing) { setPropFlash(true); setTimeout(() => setPropFlash(false), 1800); }
+    setPropEditing(v => !v);
+  };
 
   /* שמירת הערת ציר זמן */
   const saveNote = () => {
@@ -223,103 +189,16 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
         }}>כרטיסיית ליד</div>
 
         {/* ── כותרת + כפתורים ── */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
-          <div style={{ flex:1 }}>
-            {/* שם הליד — שם פרטי + משפחה זה לצד זה (עריכה), משולב בתצוגה */}
-            {editing ? (
-              <>
-                <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שם:</span>
-                <div style={{ display:"flex", gap:8, marginBottom:8, marginTop:4 }}>
-                  <input
-                    value={draft.first_name}
-                    onChange={e => setDraftField("first_name", e.target.value)}
-                    placeholder="שם פרטי"
-                    dir="rtl"
-                    style={{
-                      fontSize:16, fontWeight:900, padding:"5px 10px",
-                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
-                      borderRadius:6, outline:"none", flex:1, minWidth:0,
-                      boxSizing:"border-box", fontFamily:"inherit",
-                    }}
-                  />
-                  <input
-                    value={draft.last_name}
-                    onChange={e => setDraftField("last_name", e.target.value)}
-                    placeholder="שם משפחה"
-                    dir="rtl"
-                    style={{
-                      fontSize:16, fontWeight:900, padding:"5px 10px",
-                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
-                      borderRadius:6, outline:"none", flex:1, minWidth:0,
-                      boxSizing:"border-box", fontFamily:"inherit",
-                    }}
-                  />
-                </div>
-              </>
-            ) : (
-              <h2 style={{ margin:"0 0 8px", fontSize:20, fontWeight:900, color:DT }}>
-                <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שם:</span>
-                {fullName(client)}
-              </h2>
-            )}
-
-            {/* ── סוג התיק — בין השם לשלב התיק. בעריכה: שדה קלט בדיוק כמו שם הליד. ── */}
-            {editing ? (
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
-                <span style={{ fontSize:14, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
-                <input
-                  value={draft.case_type || ""}
-                  onChange={e => setDraftField("case_type", e.target.value)}
-                  placeholder="מחזור / רכישה מקבלן / רכישה יד שנייה…"
-                  dir="rtl"
-                  style={{
-                    fontSize:16, fontWeight:700, padding:"5px 10px",
-                    background:DI, border:`1px solid ${phase.color}66`, color:DT,
-                    borderRadius:6, outline:"none", flex:1, minWidth:0,
-                    boxSizing:"border-box", fontFamily:"inherit",
-                  }}
-                />
-              </div>
-            ) : (
-              client.case_type && (
-                <div style={{
-                  display:"flex", flexDirection:"row", alignItems:"center", gap:8,
-                  marginBottom:6,
-                }}>
-                  <span style={{ display:"flex", flexShrink:0 }}><BriefcaseIcon size={15} color={DS} /></span>
-                  <span style={{ fontSize:14, fontWeight:600, color:DS, flexShrink:0 }}>סוג התיק:</span>
-                  <span style={{ fontSize:16, fontWeight:700, color: TH.name==="Light Mode" ? "#1a1a3a" : (DT||"#e0e0f8") }}>
-                    {client.case_type}
-                  </span>
-                </div>
-              )
-            )}
-
-            <span style={{ fontSize:14 }}>📍</span>{" "}
-            <span style={{ fontSize:14, fontWeight:600, color:DS, marginLeft:6 }}>שלב התיק:</span>
-            <span style={{
-              color:phase.color,
-              fontSize:20, fontWeight:700,
-            }}>{phase.label}</span>
-          </div>
-
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div style={{ flex:1 }} />
           <div style={{ display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
-            {readOnly ? (
+            {readOnly && (
               <span style={{
                 background:"#e8a83822", color:"#b07818",
                 border:"1px solid #e8a83866",
                 borderRadius:6, padding:"4px 10px",
                 fontSize:11, fontWeight:700,
               }}>👁️ צפייה בלבד</span>
-            ) : (
-              !editing && (
-                <button onClick={startEdit} title="ערוך פרטי לקוח" style={{
-                  background:DI, border:`1px solid ${DBR}`,
-                  color:DS, borderRadius:7, padding:"6px 14px",
-                  fontSize:12, fontWeight:700, cursor:"pointer",
-                }}>ערוך</button>
-              )
             )}
             <button onClick={requestClose} style={{
               background:"none", border:"none", color:DS, fontSize:22, cursor:"pointer",
@@ -327,20 +206,8 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
           </div>
         </div>
 
-        {/* ── הודעת "נשמר" ── */}
-        {savedFlash && (
-          <div style={{
-            background:"#1a3a20", border:"1px solid #2d7a3a",
-            borderRadius:8, padding:"8px 14px", marginBottom:14,
-            color:"#3dba7e", fontSize:13, fontWeight:700,
-            display:"flex", alignItems:"center", gap:8,
-            animation:"fadeUp .2s ease",
-          }}>✓ פרטי הלקוח עודכנו בהצלחה</div>
-        )}
-
-        {/* ══════════════════════════ VIEW MODE ══════════════════════════ */}
-        {!editing && (
-          <div style={sectionBox}>
+        {/* ══════════════════════════ פרטי הליד ══════════════════════════ */}
+        <div style={sectionBox}>
             {/* כותרת "פרטי הליד" + כפתור ערוך/שמור עצמאי לקוביה הזו בלבד */}
             <div style={{
               background: TH.name==="Light Mode" ? "linear-gradient(135deg,#e8f6f6,#d8f0f0)" : "linear-gradient(135deg,#0a2424,#0d1f1f)",
@@ -381,6 +248,84 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
                 )
               )}
             </div>
+
+            {leadEditing ? (
+              <>
+                {/* שם פרטי (עריכה) */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>שם פרטי</span>
+                  <input
+                    value={leadDraft.first_name}
+                    onChange={e => setLeadDraftField("first_name", e.target.value)}
+                    placeholder="שם פרטי"
+                    dir="rtl"
+                    style={{
+                      flex:1, fontSize:16, fontWeight:900, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                </div>
+                {/* שם משפחה (עריכה) */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>שם משפחה</span>
+                  <input
+                    value={leadDraft.last_name}
+                    onChange={e => setLeadDraftField("last_name", e.target.value)}
+                    placeholder="שם משפחה"
+                    dir="rtl"
+                    style={{
+                      flex:1, fontSize:16, fontWeight:900, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                </div>
+                {/* סוג התיק (עריכה) */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}><BriefcaseIcon size={13} color={DS} /> סוג התיק</span>
+                  <input
+                    value={leadDraft.case_type || ""}
+                    onChange={e => setLeadDraftField("case_type", e.target.value)}
+                    placeholder="מחזור / רכישה מקבלן / רכישה יד שנייה…"
+                    dir="rtl"
+                    style={{
+                      flex:1, fontSize:14, fontWeight:700, padding:"5px 10px",
+                      background:DI, border:`1px solid ${phase.color}66`, color:DT,
+                      borderRadius:6, outline:"none", minWidth:0,
+                      boxSizing:"border-box", fontFamily:"inherit",
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* שם פרטי */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>שם פרטי</span>
+                  <span style={fieldValue}>{nameSplit.first_name || <span style={{ color:DS }}>—</span>}</span>
+                </div>
+                {/* שם משפחה */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}>שם משפחה</span>
+                  <span style={fieldValue}>{nameSplit.last_name || <span style={{ color:DS }}>—</span>}</span>
+                </div>
+                {/* סוג התיק */}
+                <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+                  <span style={fieldLabel}><BriefcaseIcon size={13} color={DS} /> סוג התיק</span>
+                  <span style={fieldValue}>{client.case_type || <span style={{ color:DS }}>—</span>}</span>
+                </div>
+              </>
+            )}
+
+            {/* שלב התיק — תצוגה בלבד (שינוי שלב נעשה מלוח הלידים) */}
+            <div style={{ ...fieldRow, borderBottom:`1px solid ${DBR}` }}>
+              <span style={fieldLabel}>📍 שלב התיק</span>
+              <span style={{ ...fieldValue, color:phase.color, fontWeight:800 }}>{phase.label}</span>
+            </div>
+
             {/* שיוך לסוכן — נגיש לעריכה רק לאדמין/סופר-אדמין. תחת ה-RLS המעודכן,
                 is_admin_or_super() מורשה במפורש לכתוב כל ערך advisor_email (כולל
                 "לידים ולקוחות למיון" בעת הסרת סוכן) — לכן זה בטוח להציג ולערוך כאן
@@ -462,34 +407,6 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
               </>
             )}
           </div>
-        )}
-
-        {/* ══════════════════════════ EDIT MODE ══════════════════════════ */}
-        {editing && (
-          <div style={{ ...sectionBox, border:`1px solid ${phase.color}55` }}>
-            <div style={{
-              fontSize:11, color:DS, fontWeight:700, marginBottom:14,
-              letterSpacing:.5, display:"flex", alignItems:"center", gap:6,
-            }}>
-              <span>✏️</span> עריכת פרטי לקוח
-            </div>
-
-            {/* כפתורי שמירה/ביטול */}
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={commitEdit} style={{
-                background:"linear-gradient(135deg,#3dba7e,#2d88d4)",
-                color:"#fff", border:"none", borderRadius:8,
-                padding:"9px 22px", fontSize:13, fontWeight:800, cursor:"pointer",
-                flex:1,
-              }}>✓ שמור שינויים</button>
-              <button onClick={cancelEdit} style={{
-                background:DI, color:DS,
-                border:`1px solid ${DBR}`, borderRadius:8,
-                padding:"9px 18px", fontSize:13, cursor:"pointer",
-              }}>ביטול</button>
-            </div>
-          </div>
-        )}
 
         {/* ══════════════════════════ תיאור התיק ══════════════════════════════ */}
         <DescriptionField
@@ -502,6 +419,116 @@ export function TimelineDrawer({ client, onClose, onAddNote, onUpdate, onNotesUp
           DB={DB} DC={DC} DBR={DBR} DT={DT} DS={DS} DI={DI}
           ACCENT={"#6c5ecf"}
         />
+
+        {/* ══════════════════════════ פרטי הנכס למשכון ════════════════════════ */}
+        {(() => {
+          const isLight = TH.name === "Light Mode";
+          const propColor = isLight ? "#1a1a3a" : (DT || "#e0e0f8");
+          const PROP_ACCENT = "#3a8ac0";
+          const propField = (key, label, placeholder, isTextarea=false) => (
+            <div style={{ padding:"12px 16px", borderBottom:`1px solid ${DBR}` }}>
+              <label style={{ display:"block", fontSize:11, fontWeight:700, color:DS, marginBottom:6 }}>{label}:</label>
+              {(readOnly || !propEditing) ? (
+                <div style={{ fontSize:14, fontWeight:700, color: client[key] ? propColor : DS, whiteSpace:"pre-wrap" }}>
+                  {client[key] || "— לא הוזן —"}
+                </div>
+              ) : isTextarea ? (
+                <textarea
+                  value={client[key] || ""}
+                  onChange={e => onNotesUpdate && onNotesUpdate(client.id, key, e.target.value)}
+                  placeholder={placeholder}
+                  dir="rtl"
+                  rows={3}
+                  style={{
+                    width:"100%", boxSizing:"border-box", padding:"9px 11px",
+                    background:DI, border:`1px solid ${DBR}`, borderRadius:8,
+                    color:propColor, WebkitTextFillColor:propColor, opacity:1,
+                    fontSize:13, lineHeight:1.6, outline:"none", fontFamily:"inherit", resize:"vertical",
+                  }}
+                  onFocus={e => e.target.style.borderColor=PROP_ACCENT}
+                  onBlur={e => e.target.style.borderColor=DBR}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={client[key] || ""}
+                  onChange={e => onNotesUpdate && onNotesUpdate(client.id, key, e.target.value)}
+                  placeholder={placeholder}
+                  dir="rtl"
+                  style={{
+                    width:"100%", boxSizing:"border-box", padding:"9px 11px",
+                    background:DI, border:`1px solid ${DBR}`, borderRadius:8,
+                    color:propColor, WebkitTextFillColor:propColor, opacity:1,
+                    fontSize:14, fontWeight:700, outline:"none", fontFamily:"inherit",
+                  }}
+                  onFocus={e => e.target.style.borderColor=PROP_ACCENT}
+                  onBlur={e => e.target.style.borderColor=DBR}
+                />
+              )}
+            </div>
+          );
+          return (
+            <div style={{
+              marginTop:36,
+              background: DC,
+              border:`1px solid ${DBR}`,
+              borderRadius:12, overflow:"hidden",
+            }}>
+              {/* כותרת + כפתור ערוך/שמור עצמאי */}
+              <div style={{
+                padding:"12px 16px", borderBottom:`1px solid ${DBR}`,
+                background: isLight ? "linear-gradient(135deg,#eaf4fc,#e2eefb)" : "linear-gradient(135deg,#0e1e2a,#0a1620)",
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+              }}>
+                <span style={{ fontSize:14, fontWeight:900, color:PROP_ACCENT, display:"flex", alignItems:"center", gap:7 }}>
+                  🏠 פרטי הנכס למשכון
+                  {propFlash && (
+                    <span style={{ fontSize:11, color:"#3dba7e", fontWeight:700, animation:"fadeUp .2s ease" }}>✓ נשמר בהצלחה</span>
+                  )}
+                </span>
+                {!readOnly && (
+                  <button
+                    onClick={togglePropEdit}
+                    style={{
+                      background: propEditing ? PROP_ACCENT : "transparent",
+                      border:`1px solid ${PROP_ACCENT}66`,
+                      color: propEditing ? "#fff" : PROP_ACCENT,
+                      borderRadius:6, padding:"4px 14px",
+                      fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
+                    }}
+                  >{propEditing ? "שמור" : "ערוך"}</button>
+                )}
+              </div>
+              {propField("mortgage_property_address",    "📍 כתובת",     "רחוב, מספר, עיר…")}
+              {propField("mortgage_property_value",      "💰 שווי הנכס", "לדוגמה: 1,850,000 ₪")}
+              {propField("mortgage_property_appraisal",  "📐 שמאות",     "פרטי שמאות / שם השמאי / סכום")}
+              <div style={{ padding:"12px 16px" }}>
+                <label style={{ display:"block", fontSize:11, fontWeight:700, color:DS, marginBottom:6 }}>📝 כללי:</label>
+                {(readOnly || !propEditing) ? (
+                  <div style={{ fontSize:13, color: client.mortgage_property_notes ? propColor : DS, whiteSpace:"pre-wrap", lineHeight:1.6 }}>
+                    {client.mortgage_property_notes || "— לא הוזן —"}
+                  </div>
+                ) : (
+                  <textarea
+                    value={client.mortgage_property_notes || ""}
+                    onChange={e => onNotesUpdate && onNotesUpdate(client.id, "mortgage_property_notes", e.target.value)}
+                    placeholder="הערות כלליות על הנכס…"
+                    dir="rtl"
+                    rows={3}
+                    style={{
+                      width:"100%", boxSizing:"border-box", padding:"9px 11px",
+                      background:DI, border:`1px solid ${DBR}`, borderRadius:8,
+                      color:propColor, WebkitTextFillColor:propColor, opacity:1,
+                      fontSize:13, lineHeight:1.6, outline:"none", fontFamily:"inherit", resize:"vertical",
+                    }}
+                    onFocus={e => e.target.style.borderColor=PROP_ACCENT}
+                    onBlur={e => e.target.style.borderColor=DBR}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ══════════════════════════ מסמכי הלקוח (Dropbox) ════════════════════ */}
         <DropboxField
